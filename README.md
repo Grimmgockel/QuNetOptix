@@ -1,1 +1,1 @@
-# qnexus
+# Bachelor Thesis Project
