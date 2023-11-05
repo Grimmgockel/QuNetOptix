@@ -1,5 +1,7 @@
 /doc/
-/SimulaQron/
-/notebooks/
+/simulaqron/
+simulaqron
+/CQC-Python/
+/examples/
 .idea/*
 .vscode/*
