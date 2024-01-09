@@ -3,6 +3,7 @@
 simulaqron
 /CQC-Python/
 */__pycache__/*
+/QuNetOptix/__pycache__/
 /examples/
 .idea/*
 .vscode/*
