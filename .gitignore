@@ -2,6 +2,8 @@
 /simulaqron/
 simulaqron
 /CQC-Python/
+/src/__pycache__/
+/test/__pycache__/
 /examples/
 .idea/*
 .vscode/*
