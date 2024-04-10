@@ -1,5 +1,6 @@
 /doc/
 */__pycache__/*
 /QuNetOptix/__pycache__/
+/QuNetOptix/net.dot
 .idea/*
 .vscode/*
