@@ -9,41 +9,38 @@ from qns.network.route import RouteImpl
 from qns.network.topology.topo import ClassicTopology 
 from qns.entity.memory import QuantumMemory
 from qns.simulator.simulator import Simulator
+from qns.entity.entity import Entity
 from qns.simulator.event import Event, func_to_event
 from qns.network.requests import Request
 from qns.entity.node.app import Application
 from qns.models.core import QuantumModel
 from qns.entity.qchannel.qchannel import QuantumChannel, RecvQubitPacket
 from qns.entity.cchannel.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacket
+from qns.network.topology import Topology, TreeTopology
 from typing import Optional, Dict, List, Tuple, Union, Callable
 import qns.utils.log as log
 import os
 import uuid
 
-class Superlink(Request):
-    def __init__(self, src, dest, attr: Dict = ...) -> None:
-        super().__init__(src, dest, attr)
 
-class SLS():
-    def __init__():
-        # TODO
-        pass
-
-    def select() -> List[Superlink]:
-        # TODO 
-        # TODO parametres in paper
-        superlinks: List[Superlink] = []
-        return superlinks
 
 '''
 Quantum network containing special request types called superlinks, that are considered for routing as entanglement links
 '''
-class SuperlinkNetwork(QuantumNetwork):
-    def __init__(self, sls: SLS, topo: Topology | None = None, route: RouteImpl | None = None, classic_topo: ClassicTopology | None = ClassicTopology.Empty, name: str | None = None):
+class SLNetwork(QuantumNetwork):
+    def __init__(self, topo: Topology | None = None, route: RouteImpl | None = None, classic_topo: ClassicTopology | None = ClassicTopology.Empty, name: str | None = None):
         super().__init__(topo, route, classic_topo, name)
 
-        self._sls = sls
-        self.superlinks: List[Superlink] = sls.select()
+        self.superlinks: List[Request] = self.sls()
+
+
+    def sls(self):
+        # TODO
+        superlinks: List[Request] = []
+        slrequest = Request(src=self.get_node('n3'), dest=self.get_node('n7'), attr={'send_rate': 0.5})
+        superlinks.append(slrequest)
+
+        return superlinks
 
     def generate_dot_file(self, filename: str):
         script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -60,10 +57,15 @@ class SuperlinkNetwork(QuantumNetwork):
 
             # TODO this should be superlinks
             for req in self.requests:
-                f.write(f'{req.src.name}--{req.dest.name} [color=purple penwidth=5];\n')
+                f.write(f'{req.src.name}--{req.dest.name} [color=purple penwidth=5 constraint=False];\n')
 
 
             f.write('}')
+
+
+#############################################################################################################3
+
+
 
 '''
 Routes requests over superlinks using entanglement swapping
@@ -74,17 +76,35 @@ class SuperlinkApp(EntanglementDistributionApp):
 
         # TODO init kpis here to aggregate after sim run, also events, use monitor for this (tutorial)
 
+    def install(self, node: QNode, simulator: Simulator):
+        super().install(node, simulator)
+
+        try:
+            # this only works for src and dst node of sl
+            self.own.sl = True
+            slrequest: Request = self.own.superlinks[0] 
+            print(slrequest)
+        except IndexError:
+            pass
+
+
+
+    '''
+    Kick off entanglement distribution
+    '''
     def new_distribution(self):
-        # TODO loop this
+        log.debug(f'{self.own} new_distribution')
+
+        # TODO not looping for easier to understand log
         # insert the next send event
         #t = self._simulator.tc + Time(sec=1 / self.send_rate)
         #event = func_to_event(t, self.new_distribution, by=self)
         #self._simulator.add_event(event)
-        log.debug(f"{self.own}: start new request")
+        #log.debug(f"{self.own}: start new request")
 
-        # generate new entanglement
+        # generate new entanglement with random 16 bytes as transmit id
         epr = self.generate_qubit(self.own, self.dst, None)
-        log.debug(f"{self.own}: generate epr {epr.name}")
+        #log.debug(f"{self.own}: generate epr {epr.name}")
 
         self.state[epr.transmit_id] = Transmit(
             id=epr.transmit_id,
@@ -92,21 +112,109 @@ class SuperlinkApp(EntanglementDistributionApp):
             dst=self.dst,
             second_epr_name=epr.name)
 
-        log.debug(f"{self.own}: generate transmit {self.state[epr.transmit_id]}")
+        #log.debug(f"{self.own}: generate transmit {self.state[epr.transmit_id]}")
         if not self.memory.write(epr):
             self.memory.read(epr)
             self.state[epr.transmit_id] = None
         self.send_count += 1
         self.request_distrbution(epr.transmit_id)
 
+
+
+    '''
+    TODO what is state variable?? -> find better name or document
+    gets called at the start and for 'next' cmd
+    '''
+    def request_distrbution(self, transmit_id: str):
+        log.debug(f'{self.own} request_distribution')
+        transmit = self.state.get(transmit_id)
+        if transmit is None:
+            return
+        epr_name = transmit.second_epr_name
+        epr = self.memory.get(epr_name)
+        if epr is None:
+            return
+
+        dst = transmit.dst
+        # get next hop
+        route_result = self.net.query_route(self.own, dst)
+        try:
+            next_hop: QNode = route_result[0][1]
+        except IndexError:
+            raise Exception("Route error")
+
+        qchannel: QuantumChannel = self.own.get_qchannel(next_hop)
+        if qchannel is None:
+            raise Exception("No such quantum channel")
+
+        # send the entanglement
+        log.debug(f"{self.own}: send epr {epr.name} to {next_hop} over quantum channel")
+        qchannel.send(epr, next_hop)
+
+
+    '''
+    Response to qubit transmission
+    '''
+    def response_distribution(self, packet: RecvQubitPacket):
+        log.debug(f'{self.own} response_distribution')
+        qchannel: QuantumChannel = packet.qchannel
+
+        # get sender of qubit
+        from_node: QNode = qchannel.node_list[0] \
+            if qchannel.node_list[1] == self.own else qchannel.node_list[1]
+
+        cchannel: ClassicChannel = self.own.get_cchannel(from_node)
+        if cchannel is None:
+            raise Exception("No such classic channel")
+
+        # receive the first epr
+        epr: WernerStateEntanglement = packet.qubit
+        log.debug(f"{self.own}: recv epr {epr.name} from {from_node} over quantum channel")
+
+        # generate the second epr
+        next_epr = self.generate_qubit(
+            src=epr.src, dst=epr.dst, transmit_id=epr.transmit_id)
+        #log.debug(f"{self.own}: generate epr {next_epr.name}")
+        self.state[epr.transmit_id] = Transmit(
+            id=epr.transmit_id,
+            src=epr.src,
+            dst=epr.dst,
+            first_epr_name=epr.name,
+            second_epr_name=next_epr.name)
+        #log.debug(f"{self.own}: generate transmit {self.state[epr.transmit_id]}")
+
+        #log.debug(f"{self.own}: store {epr.name} and {next_epr.name}")
+        ret1 = self.memory.write(epr)
+        ret2 = self.memory.write(next_epr)
+        if not ret1 or not ret2:
+            #log.debug(f"{self.own}: store fail, destory {epr} and {next_epr}")
+            # if failed (memory is full), destory all entanglements
+            self.memory.read(epr)
+            self.memory.read(next_epr)
+            classic_packet = ClassicPacket(
+                msg={"cmd": "revoke", "transmit_id": epr.transmit_id}, src=self.own, dest=from_node)
+            cchannel.send(classic_packet, next_hop=from_node)
+            #log.debug(f"{self.own}: send {classic_packet.msg} to {from_node}")
+            return
+
+        classic_packet = ClassicPacket(
+            msg={"cmd": "swap", "transmit_id": epr.transmit_id}, src=self.own, dest=from_node)
+        cchannel.send(classic_packet, next_hop=from_node)
+        log.debug(
+            f"{self.own}: send {classic_packet.msg} from {self.own} to {from_node} over classic channel")
+
+    '''
+    ORCHESTRATE NODE COMMUNICATION
+    '''
     def handle_response(self, packet: RecvClassicPacket):
+        log.debug(f'{self.own} handle_response')
         msg = packet.packet.get()
         cchannel = packet.cchannel
 
         from_node: QNode = cchannel.node_list[0] \
             if cchannel.node_list[1] == self.own else cchannel.node_list[1]
 
-        log.debug(f"{self.own}: recv {msg} from {from_node}")
+        log.debug(f"{self.own}: recv {msg} from {from_node} over classical channel")
 
         cmd = msg["cmd"]
         transmit_id = msg["transmit_id"]
@@ -125,21 +233,21 @@ class SuperlinkApp(EntanglementDistributionApp):
                 swap_order_log: str = f'{self.own}:\t[SWAP]\t{transmit.src.name}-{self.own.name}-{from_node.name}\t=> \t{transmit.src.name}-{from_node.name}'
                 epr_log: str = f'\t\t[EPRs consumed: {first_epr.name}; {second_epr.name}'
                 new_epr_log: str = f'\t|\tnew EPR: {new_epr.name}]'
-                log.info(swap_order_log + epr_log + new_epr_log)
+                log.debug(swap_order_log + epr_log + new_epr_log)
 
                 src: QNode = transmit.src
-                app: EntanglementDistributionApp = src.get_apps(
-                    EntanglementDistributionApp)[0]
+                app: SuperlinkApp = src.get_apps(
+                    SuperlinkApp)[0]
                 app.set_second_epr(new_epr, transmit_id=transmit_id)
 
-                app: EntanglementDistributionApp = from_node.get_apps(
-                    EntanglementDistributionApp)[0]
+                app: SuperlinkApp = from_node.get_apps(
+                    SuperlinkApp)[0]
                 app.set_first_epr(new_epr, transmit_id=transmit_id)
 
             classic_packet = ClassicPacket(
                 msg={"cmd": "next", "transmit_id": transmit_id}, src=self.own, dest=from_node)
             cchannel.send(classic_packet, next_hop=from_node)
-            log.debug(f"{self.own}: send {classic_packet.msg} to {from_node}")
+            log.debug(f"{self.own}: send {classic_packet.msg} to {from_node} over classic channel")
         elif cmd == "next":
             # finish or request to the next hop
             if self.own == transmit.dst:
@@ -156,7 +264,7 @@ class SuperlinkApp(EntanglementDistributionApp):
                 cchannel = self.own.get_cchannel(transmit.src)
                 if cchannel is not None:
                     log.debug(
-                        f"{self.own}: send {classic_packet} to {from_node}")
+                        f"{self.own}: send {classic_packet.msg} to {from_node} over classic channel")
                     cchannel.send(classic_packet, next_hop=transmit.src)
             else:
                 log.debug(f"{self.own}: begin new request {transmit_id}")
@@ -164,7 +272,7 @@ class SuperlinkApp(EntanglementDistributionApp):
         elif cmd == "succ":
             # the source notice that entanglement distribution is succeed.
             result_epr = self.memory.read(transmit.second_epr_name)
-            log.debug(f"{self.own}: recv success distribution {result_epr}")
+            log.debug(f"{self.own}: recv success distribution {result_epr} over classic channel")
             self.state[transmit_id] = None
             self.success_count += 1
         elif cmd == "revoke":
@@ -182,29 +290,13 @@ class SuperlinkApp(EntanglementDistributionApp):
                 cchannel = self.own.get_cchannel(transmit.src)
                 if cchannel is not None:
                     log.debug(
-                        f"{self.own}: send {classic_packet} to {from_node}")
+                        f"{self.own}: send {classic_packet} to {from_node} over classic channel")
                     cchannel.send(classic_packet, next_hop=transmit.src)
 
+    def generate_qubit(self, src: QNode, dst: QNode, transmit_id: str | None = None) -> QuantumModel:
+        epr = WernerStateEntanglement(fidelity=self.init_fidelity, name=uuid.uuid4().hex)
+        epr.src = src
+        epr.dst = dst
+        epr.transmit_id = transmit_id if transmit_id is not None else uuid.uuid4().hex
+        return epr
 
-
-'''
-SwappingTree routing algorithm for optimized entanglement swapping
-'''
-class SwappingTreeRoutingAlgorithm(RouteImpl):
-    def __init__(self, name: str = "swappingtree",
-                 metric_func: Callable[[Union[QuantumChannel, ClassicChannel]], float] = None) -> None:
-        self.name = name
-        self.route_table = []
-        if metric_func is None:
-            self.metric_func = lambda _: 1
-        else:
-            self.metric_func = metric_func
-
-    def build(self, nodes: List[QNode], channels: List[Union[QuantumChannel, ClassicChannel]]):
-        pass
-
-    def query(self, src: QNode, dest: QNode) -> List[Tuple[float, QNode, List[QNode]]]:
-        '''
-        query metric, nexthop and path
-        '''
-        return []

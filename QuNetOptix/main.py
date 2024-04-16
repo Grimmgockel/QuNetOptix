@@ -8,12 +8,15 @@ from qns.network.topology.waxmantopo import WaxmanTopology
 from qns.network.topology.linetopo import LineTopology
 import qns.utils.log as log
 
-from sls import SuperlinkApp, SuperlinkNetwork, SLS
+from sls import SuperlinkApp, SLNetwork
 
-# TODO understand ES algorithm (sequence diagram of a fixed example for basic) 
-# TODO implement swapping tree routing FIRST (sequence diagram)
+# TODO IMPLEMENTIERE ICH UEBERHAUPT ANDERES ROUTING ODER NUR SUPERLINKS???
+# TODO make communication more readable and better logging
+# TODO abstract ES into linear swapping and tree swapping algorithm (error models for tree swapping)
+# TODO swapping order in APP and swapping tree selection in Routing
+# TODO look for other routing algorithms
+
 # TODO implement superlinks (superlinks don't decohere for simplicity? superlink are static requests vs dynamic ones?)
-# TODO error models !!!
 # TODO kpis
 # TODO why werner entanglement 
 if __name__ == '__main__':
@@ -40,27 +43,28 @@ if __name__ == '__main__':
         nodes_apps=[SuperlinkApp()],
     )
     line = LineTopology(
-        nodes_number=5,
+        nodes_number=10,
         nodes_apps=[SuperlinkApp()],
     )
 
     # set topology
-    topo = tree
+    topo = line
 
     # network
-    net = SuperlinkNetwork(sls=SLS, topo=topo, classic_topo=ClassicTopology.All)
+    net = SLNetwork(topo=topo, classic_topo=ClassicTopology.All)
     net.build_route()
-    net.random_requests(1, attr={"send_rate": 10})
-    #net.add_request(src=net.get_node('n1'), dest=net.get_node('n5'), attr={"send_rate": 0.5})
+    #net.random_requests(2, attr={"send_rate": 10}) # 10 hz
+    net.add_request(src=net.get_node('n3'), dest=net.get_node('n7'), attr={"send_rate": 0.5}) 
     for req in net.requests:
         log.info(f"Process request: {req.src.name}->{req.dest.name}")
+
 
     # generate dot for net viz
     net.generate_dot_file("net.dot")
 
     # start sim
-    s = Simulator(0, 10, accuracy=1000000)
-    log.logger.setLevel(log.logging.INFO)
+    s = Simulator(0, 20, accuracy=1000000)
+    log.logger.setLevel(log.logging.DEBUG)
     log.install(s)
     net.install(s)
     s.run()
