@@ -1,0 +1,27 @@
+graph {
+n0 [label="n0"];
+n1 [label="n1"];
+n2 [label="n2"];
+n3 [label="n3"];
+n4 [label="n4"];
+n5 [label="n5"];
+n6 [label="n6"];
+n7 [label="n7"];
+n8 [label="n8"];
+n9 [label="n9"];
+n10 [label="n10"];
+n11 [label="n11"];
+
+n0--n2;
+n1--n2;
+n4--n2;
+n3--n2;
+n5--n2;
+n5--n6;
+n6--n9;
+n7--n9;
+n8--n9;
+n11--n9;
+n10--n9;
+
+}
