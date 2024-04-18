@@ -55,17 +55,18 @@ if __name__ == '__main__':
     # network
     net = VLNetwork(topo=topo, classic_topo=ClassicTopology.All)
     net.build_route()
-    net.add_request(src=net.get_node('n2'), dest=net.get_node('n9'), attr={"send_rate": 0.5}) 
-    for req in net.requests:
-        log.info(f"Process request: {req.src.name}->{req.dest.name}")
+    net.add_request(src=net.get_node('n4'), dest=net.get_node('n11'), attr={"send_rate": 0.5}) 
+    #for req in net.requests:
+        #log.info(f"Process request: {req.src.name}->{req.dest.name}")
 
     # generate dot for net viz
     net.generate_lvl0_dot_file("lvl0_net.dot")
     net.generate_lvl1_dot_file("lvl1_net.dot")
+    net.generate_lvl2_dot_file("lvl2_net.dot")
 
     # start sim
     s = Simulator(0, 20, accuracy=1000000)
-    log.logger.setLevel(log.logging.DEBUG)
+    log.logger.setLevel(log.logging.INFO)
     log.install(s)
     net.install(s)
     s.run()

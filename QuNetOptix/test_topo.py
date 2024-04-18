@@ -25,7 +25,6 @@ class TestTopology(Topology):
         for i in range(11):
             link = QuantumChannel(name=f"l{i}", **self.qchannel_args)
             ll.append(link)
-            print(i)
 
         # build first star
         nl[0].add_qchannel(ll[0])
@@ -62,24 +61,6 @@ class TestTopology(Topology):
 
         nl[10].add_qchannel(ll[10])
         nl[9].add_qchannel(ll[10])
-
-        # build node list
-        #if self.nodes_number >= 1:
-            #n = QNode(f"n{1}")
-            #nl.append(n)
-        #pn = n
-#
-    #
-#
-        #for i in range(self.nodes_number - 1):
-            #n = QNode(f"n{i+2}")
-            #nl.append(n)
-            #link = QuantumChannel(name=f"l{i+1}", **self.qchannel_args)
-            #ll.append(link)
-#
-            #pn.add_qchannel(link)
-            #n.add_qchannel(link)
-            #pn = n
 
         self._add_apps(nl)
         self._add_memories(nl)

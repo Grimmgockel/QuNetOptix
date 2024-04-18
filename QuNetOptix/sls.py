@@ -31,14 +31,14 @@ class VLNetwork(QuantumNetwork):
     def __init__(self, topo: Topology | None = None, route: RouteImpl | None = None, classic_topo: ClassicTopology | None = ClassicTopology.Empty, name: str | None = None):
         super().__init__(topo, route, classic_topo, name)
 
-        self.virtual_links: List[Request] = self.virtual_link_selection()
+        self.vlinks: List[Request] = self.virtual_link_selection()
 
 
     def virtual_link_selection(self):
         # TODO at this point the network graph is built, based on the graph requests for virtual links need to be produced
         vlinks: List[Request] = []
-        slrequest = Request(src=self.get_node('n3'), dest=self.get_node('n7'), attr={'send_rate': 0.5})
-        vlinks.append(slrequest)
+        vlink_request = Request(src=self.get_node('n2'), dest=self.get_node('n9'), attr={'send_rate': 0.5})
+        vlinks.append(vlink_request)
         return vlinks
         
     # TODO generate_lvl2_dot_file
@@ -59,6 +59,8 @@ class VLNetwork(QuantumNetwork):
 
             f.write('}')
 
+    # TODO this happens after route tables are build => viz routing path
+    # TODO this happens after vls => viz virtual link proximity as clusters
     def generate_lvl1_dot_file(self, filename: str): # physical graph + entanglement connectivity
         script_dir = os.path.dirname(os.path.abspath(__file__))
         dot_file_path = os.path.join(script_dir, filename)
@@ -72,8 +74,38 @@ class VLNetwork(QuantumNetwork):
                 f.write(f'{qchannel.node_list[0].name}--{qchannel.node_list[1].name};\n')
             f.write('\n')
 
+            for vlink in self.vlinks:
+                f.write(f'{vlink.src.name}--{vlink.dest.name} [color=purple penwidth=5 constraint=False];\n')
+
+            f.write('\n')
             for req in self.requests:
-                f.write(f'{req.src.name}--{req.dest.name} [color=purple penwidth=5 constraint=False];\n')
+                route_result = self.query_route(req.src, req.dest)            
+                path = route_result[0][2]
+                for i, n in enumerate(path):
+                    if i < len(path) - 1:
+                        hop: str = f'{n.name}->{path[i+1].name} [color=red penwidth=2]\n'
+                        f.write(hop)
+
+                #path = route_result[2]
+                #print(path)
 
             f.write('}')
+
+    # TODO this happens after route tables are build => viz routing path
+    def generate_lvl2_dot_file(self, filename: str): # virtual link enabled overlay graph
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        dot_file_path = os.path.join(script_dir, filename)
+
+        with open(dot_file_path, 'w') as f:
+            f.write('graph {\n')
+            for vlink in self.vlinks:
+                src = vlink.src
+                dest = vlink.dest
+                f.write(f'{src.name} [label=\"{src.name}\"];\n')
+                f.write(f'{dest.name} [label=\"{dest.name}\"];\n')
+                f.write(f'{src.name}--{dest.name} [color=purple penwidth=5 constraint=False];\n')
+                f.write('\n')
+
+            f.write('}')
+
 
