@@ -1,3 +1,5 @@
+from qns.entity.cchannel.cchannel import RecvClassicPacket
+from qns.models.core.backend import QuantumModel
 from qns.network.topology.topo import ClassicTopology
 from qns.network.topology import RandomTopology
 from qns.network.requests import Request
@@ -6,71 +8,57 @@ from qns.simulator.simulator import Simulator
 from qns.network.topology.treetopo import TreeTopology
 from qns.network.topology.waxmantopo import WaxmanTopology
 from qns.network.topology.linetopo import LineTopology
+from qns.entity.monitor.monitor import Monitor, MonitorEvent
+from qns.entity.node.node import QNode
+from qns.simulator.event import Event
+from qns.entity.qchannel.qchannel import QuantumChannel, RecvQubitPacket
 import qns.utils.log as log
 
-from sls import VLNetwork
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 
+from vls import VLNetwork
+from oracle import NetworkOracle
 
-# TODO implement viz and methodology for basic entanglement distribution via monitor
-
-# TODO SETUP CUSTOM CLUSTER TOPOLOGY FOR TESTING
+# TODO implement viz and methodology for basic entanglement distribution via monitor on random topology DECIDE ON A TOPOLOGY
+# -> think about error/loss/decoherence models, entanglement models and hardware details
+# TODO SETUP CUSTOM CLUSTER TOPOLOGY FOR TESTING ROUTING OVER VIRTUAL LINKS
 # - have virtual links as requests in the net (entanglement that doesn't decohere?)
 # - each node has its next virtual link next to it, this is taken into account for routing 
 # - implement routing with virtual links
-
-# TODO think about error/loss/decoherence models, entanglement models and hardware details
 # TODO implement selection algo for virtual links
 if __name__ == '__main__':
 
-    # different topologies
-    random = RandomTopology(
-        nodes_number=10,
-        lines_number=9,
-        qchannel_args={"delay": 0.05},
-        cchannel_args={"delay": 0.05},
-        memory_args=[{"capacity": 3}],
-        nodes_apps=[EntanglementDistributionApp()],
-    )
-    wax = WaxmanTopology(
-        nodes_number=8,
-        size=2,
-        alpha=0.25,
-        beta=20,
-        nodes_apps=[EntanglementDistributionApp()],
-    )
-    tree = TreeTopology(
-        nodes_number=9,
-        children_number=3,
-        nodes_apps=[EntanglementDistributionApp()],
-    )
-    line = LineTopology(
-        nodes_number=10,
-        nodes_apps=[EntanglementDistributionApp()],
-    )
+    oracle = NetworkOracle()
 
-    from test_topo import TestTopology
-    # set topology
-    topo = TestTopology(nodes_apps=[EntanglementDistributionApp()])
+    for i in range(10, 151, 10):
+        s = Simulator(0, 10, accuracy=1000000)
 
-    # network
-    net = VLNetwork(topo=topo, classic_topo=ClassicTopology.All)
-    net.build_route()
-    net.add_request(src=net.get_node('n4'), dest=net.get_node('n11'), attr={"send_rate": 0.5}) 
-    #for req in net.requests:
-        #log.info(f"Process request: {req.src.name}->{req.dest.name}")
+        log.logger.setLevel(log.logging.INFO)
+        log.install(s)
 
-    # generate dot for net viz
-    net.generate_lvl0_dot_file("lvl0_net.dot")
-    net.generate_lvl1_dot_file("lvl1_net.dot")
-    net.generate_lvl2_dot_file("lvl2_net.dot")
+        nodes_number = i
+        random = RandomTopology(
+            nodes_number=nodes_number,
+            lines_number=int(nodes_number*1.5),
+            qchannel_args={"delay": 0.05},
+            cchannel_args={"delay": 0.05},
+            memory_args=[{"capacity": 10}],
+            nodes_apps=[EntanglementDistributionApp(init_fidelity=0.99)],
+        )
+        net = VLNetwork(topo=random, classic_topo=ClassicTopology.All)
+        net.build_route()
+        net.random_requests(number=1, attr={'send_rate': 10})
+        net.install(s)
 
-    # start sim
-    s = Simulator(0, 20, accuracy=1000000)
-    log.logger.setLevel(log.logging.INFO)
-    log.install(s)
-    net.install(s)
-    s.run()
+        # install and run
+        oracle.set_simulator(s)
+        oracle.set_network(net)
+        oracle.start_monitor()
+        s.run()
+        oracle.collect_monitor()
+
+    oracle.plot()
 
 
-    success_count = [req.src.apps[0].success_count for req in net.requests][0]
-    print(f'Success count: {success_count}')

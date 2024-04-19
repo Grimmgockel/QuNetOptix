@@ -1,12 +1,19 @@
+from QuNetOptix.vls import VLNetwork  # TODO module not found ???
+
+from qns.network.protocol.entanglement_distribution import EntanglementDistributionApp
+from qns.network.topology.topo import ClassicTopology
 from qns.entity.node.app import Application
 from qns.entity.qchannel.qchannel import QuantumChannel
 from qns.entity.node.node import QNode
-from typing import Dict, List, Optional, Tuple
 from qns.network.topology import Topology
 
+from typing import Dict, List, Optional, Tuple
+import pytest
 
+'''
+Custom double star topology for testing virtual link routing
+'''
 class TestTopology(Topology):
-
     def __init__(self, nodes_apps: List[Application] = [],
                  qchannel_args: Dict = {}, cchannel_args: Dict = {},
                  memory_args: Optional[List[Dict]] = {}):
@@ -67,3 +74,8 @@ class TestTopology(Topology):
         return nl, ll
 
 
+if __name__ == '__main__': 
+    test = TestTopology(nodes_apps=[EntanglementDistributionApp()])
+    net = VLNetwork(topo=test, classic_topo=ClassicTopology.All)
+    net.build_route()
+    net.add_request(src=net.get_node('n4'), dest=net.get_node('n11'), attr={"send_rate": 0.5}) 
