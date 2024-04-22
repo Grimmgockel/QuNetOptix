@@ -7,6 +7,7 @@ from qns.network.protocol import EntanglementDistributionApp
 from qns.entity.cchannel import RecvClassicPacket
 from qns.network.network import QuantumNetwork
 from qns.simulator.simulator import Simulator
+from qns.network.topology.topo import Topology
 from qns.network.topology.topo import ClassicTopology
 import qns.utils.log as log
 
@@ -27,28 +28,21 @@ class NetworkOracle():
         self.data = pd.DataFrame()
 
     # TODO make setup more general with network.json file
-    def setup(self, nodes_number, loglvl: int = log.logging.INFO):
+    def run(self, sim: Simulator, topo: Topology, 
+            request_count: int = 1, send_rate: int = 10, 
+            loglvl: int = log.logging.INFO):
+
         # Simulator
-        self._sim = Simulator(0, 100, accuracy=1000000)
+        self._sim = sim
 
         # Logger
         log.logger.setLevel(loglvl)
         log.install(self._sim)
 
-        # Topology
-        topo = RandomTopology(
-            nodes_number=nodes_number,
-            lines_number=int(nodes_number/2),
-            qchannel_args={"delay": 0.05},
-            cchannel_args={"delay": 0.05},
-            memory_args=[{"capacity": 10}],
-            nodes_apps=[BaseApp(init_fidelity=0.99)],
-        )
-
         # Network
         self._net = VLNetwork(topo=topo, classic_topo=ClassicTopology.All)
         self._net.build_route()
-        self._net.random_requests(number=1, attr={'send_rate': 10})
+        self._net.random_requests(number=request_count, attr={'send_rate': send_rate})
         self._net.install(self._sim)
 
         # Monitor
@@ -65,6 +59,10 @@ class NetworkOracle():
         self._monitor.at_finish()
         self._monitor.install(self._sim)
 
+        log.info(f'start new sim') # TODO more detail, 
+        self._sim.run()
+        self.data = pd.concat([self.data, self._monitor.data], ignore_index=True)
+
     def _gather_gen_latency(self, s, n, e):
         agg: float = 0.0
         count: int = 0
@@ -74,16 +72,12 @@ class NetworkOracle():
                 count += 1
         running_avg: float = agg / count
         return running_avg
-
-    def run(self):
-        log.info(f'start new sim') # TODO more detail, maybe loading bar haha
-        self._sim.run()
-        self.data = pd.concat([self.data, self._monitor.data], ignore_index=True)
         
     '''
     Plot data
     '''
     def plot(self):
+        # TODO get cooler plot framework than matplotlib
         # TODO 3d plot for fidelity
         # TODO 2d plots for throughput against ? (concurrency paper)
         # TODO 2d plots for latency against cost budget, edge density, # of nodes, # of sd pairs (sls paper)

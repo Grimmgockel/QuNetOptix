@@ -11,6 +11,7 @@ from qns.entity.monitor.monitor import Monitor, MonitorEvent
 from qns.entity.node.node import QNode
 from qns.simulator.event import Event
 from qns.entity.qchannel.qchannel import QuantumChannel, RecvQubitPacket
+from qns.network.topology import RandomTopology
 import qns.utils.log as log
 
 import numpy as np
@@ -19,6 +20,7 @@ import matplotlib.pyplot as plt
 
 from vls import VLNetwork
 from oracle import NetworkOracle
+from base_routing import BaseApp
 
 # TODO viz: sls and concurrency paper in one plot, second plot 3d fidelity
 # TODO viz: implement custom Time class for millisecond plot
@@ -34,8 +36,20 @@ if __name__ == '__main__':
     oracle = NetworkOracle()
 
     for i in range(10, 151, 5):
-        oracle.setup(i)
-        oracle.run()
+        oracle.run(
+            Simulator(0, 50, accuracy=1000000),
+            RandomTopology(
+                nodes_number=i,
+                lines_number=int(i*1.5),
+                qchannel_args={"delay": 0.05},
+                cchannel_args={"delay": 0.05},
+                memory_args=[{"capacity": 10}],
+                nodes_apps=[BaseApp(init_fidelity=0.99)],
+            ),
+            request_count=int(i/2),
+            send_rate=0.5,
+            loglvl=log.logging.INFO
+        )
 
     oracle.plot()
 
