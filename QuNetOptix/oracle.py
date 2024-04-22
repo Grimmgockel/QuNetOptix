@@ -1,72 +1,101 @@
 from typing import Any
 from qns.entity.monitor.monitor import Monitor, MonitorEvent
+from qns.network.topology import RandomTopology
 from qns.simulator.ts import Time
 from qns.simulator.event import Event, func_to_event
 from qns.network.protocol import EntanglementDistributionApp
 from qns.entity.cchannel import RecvClassicPacket
+from qns.network.network import QuantumNetwork
+from qns.simulator.simulator import Simulator
+from qns.network.topology.topo import ClassicTopology
+import qns.utils.log as log
+
+from vls import VLNetwork
+from base_routing import BaseApp
+
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from typing import Optional
 
 class NetworkOracle():
     def __init__(self) -> None:
-        self.sim=None
-        self.success_data = pd.DataFrame()
+        self._sim: Optional[Simulator] = None
+        self._net: Optional[QuantumNetwork] = None
+        self._monitor: Optional[Monitor] = None
+        self.data = pd.DataFrame()
 
-    def set_simulator(self, s):
-        self.sim=s
+    # TODO make setup more general with network.json file
+    def setup(self, nodes_number, loglvl: int = log.logging.INFO):
+        # Simulator
+        self._sim = Simulator(0, 100, accuracy=1000000)
 
-    def set_network(self, n):
-        self.net=n
+        # Logger
+        log.logger.setLevel(loglvl)
+        log.install(self._sim)
 
-    def start_monitor(self, period_time=1):
-        assert(self.sim is not None)
-        assert(self.net is not None)
+        # Topology
+        topo = RandomTopology(
+            nodes_number=nodes_number,
+            lines_number=int(nodes_number/2),
+            qchannel_args={"delay": 0.05},
+            cchannel_args={"delay": 0.05},
+            memory_args=[{"capacity": 10}],
+            nodes_apps=[BaseApp(init_fidelity=0.99)],
+        )
 
-        self.m = Monitor(network=self.net)
+        # Network
+        self._net = VLNetwork(topo=topo, classic_topo=ClassicTopology.All)
+        self._net.build_route()
+        self._net.random_requests(number=1, attr={'send_rate': 10})
+        self._net.install(self._sim)
 
-        # attributions
-        self.m.add_attribution(name="success", calculate_func=lambda s, n, e: (
+        # Monitor
+        self._monitor = Monitor(network=self._net)
+
+        self._monitor.add_attribution(name="success", calculate_func=lambda s, n, e: (
             [req.src.apps[0].success_count for req in n.requests][0]
         ))
+        self._monitor.add_attribution(name="node_count", calculate_func=lambda s, n, e: (
+            len(self._net.nodes)
+        ))
+        self._monitor.add_attribution(name="generation_latency_avg", calculate_func=self._gather_gen_latency)
 
-        # when to collect attributions
-        self.m.at_start()
-        self.m.at_period(period_time)
-        self.m.at_finish()
+        self._monitor.at_finish()
+        self._monitor.install(self._sim)
 
-        # install
-        self.m.install(self.sim)
+    def _gather_gen_latency(self, s, n, e):
+        agg: float = 0.0
+        count: int = 0
+        for node in self._net.nodes:
+            if node.apps[0].generation_latency > 0:
+                agg += node.apps[0].generation_latency 
+                count += 1
+        running_avg: float = agg / count
+        return running_avg
 
-    def collect_monitor(self):
-        assert(self.sim is not None)
-        assert(self.net is not None)
-
-        node_count = len(self.net.nodes)
-        df_3d = self.m.data.assign(node_count=node_count)
-        self.success_data = pd.concat([self.success_data, df_3d], ignore_index=True)
+    def run(self):
+        log.info(f'start new sim') # TODO more detail, maybe loading bar haha
+        self._sim.run()
+        self.data = pd.concat([self.data, self._monitor.data], ignore_index=True)
         
     '''
     Plot data
     '''
     def plot(self):
         # TODO 3d plot for fidelity
-        # TODO 2d plots for throughput
-        x = self.success_data['node_count']
-        y = self.success_data['time']
-        z = self.success_data['success']
+        # TODO 2d plots for throughput against ? (concurrency paper)
+        # TODO 2d plots for latency against cost budget, edge density, # of nodes, # of sd pairs (sls paper)
 
-        fig = plt.figure(figsize=(10, 8))
-        ax = fig.add_subplot(111, projection='3d')
-        ax.scatter(x, y, z, c='b', marker='o')
-        #surf = ax.plot_surface(x,y,z,cmap='viridis')
-        #fig.colorbar(surf)
+        x = self.data['node_count']
+        y = self.data['generation_latency_avg']
 
-        ax.set_xlabel('# of nodes')
-        ax.set_ylabel('time in s')
-        ax.set_zlabel('# of distributions')
-        ax.set_title("3d plot")
+        plt.plot(x, y)
+        plt.xlabel("# of nodes")
+        plt.ylabel("average gen latency")
+
+        plt.title("2d plot")
 
         plt.show()
 
@@ -109,3 +138,7 @@ class NetworkOracle():
                     f.write('\n')
 
             f.write('}')
+
+
+
+
