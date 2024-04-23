@@ -17,6 +17,7 @@ import qns.utils.log as log
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 from vls import VLNetwork
 from oracle import NetworkOracle
@@ -24,47 +25,50 @@ from config import Config
 from base_routing import BaseApp
 
 
-# TODO more detail on the "start sim" print to see sim progress
-# TODO get cooler plot framework than matplotlib
-# TODO 3d plot for fidelity
-# TODO 2d plots for throughput against ? (concurrency paper)
-# TODO 2d plots for latency against cost budget, edge density, # of nodes, # of sd pairs (sls paper)
-# TODO viz: sls and concurrency paper in one plot, second plot 3d fidelity, look into routing papers for additional methodology
-# -> gather all the data for methodology first
-# TODO viz: implement custom Time class for millisecond plot
-# TODO viz: look into random topo and waxman topo to FIND A TOPOLOGY WHERE MEANINGFUL PLOTS EMERGE
-# TODO think about error/loss/decoherence models, entanglement models and hardware details
-# TODO SETUP CUSTOM CLUSTER TOPOLOGY FOR TESTING ROUTING OVER VIRTUAL LINKS
-# - have virtual links as requests in the net (entanglement that doesn't decohere?)
-# - each node has its next virtual link next to it, this is taken into account for routing 
-# - implement routing with virtual links
-# TODO implement selection algo for virtual links
+
+# TODO ROUTING
+# have virtual links as requests in the net (entanglement that doesn't decohere?)
+# each node has its next virtual link next to it, this is taken into account for routing 
+# implement routing with virtual links
+
+# TODO VIRTUAL LINK SELECTION
+# implement selection algo for virtual links
+
+# TODO VIZ
+# get basic plot for 2 curves comparing base routing with custom routing
+# look into routing papers for more meaningful methodology
+# look into docs for multicore sim
+# save experiments into results.csv
+# get cooler plot framework than matplotlib
+# think about error/loss/decoherence models, entanglement models and hardware details
+# viz: look into random topo and waxman topo to FIND A TOPOLOGY WHERE MEANINGFUL PLOTS EMERGE
 if __name__ == '__main__':
 
     oracle = NetworkOracle()
 
-    for i in range(10, 301, 5):
-
+    for i in range(10, 151, 10):
         # arbitrary config struct
         config = Config(
-            ts=0,
-            te=50,
-            acc=1000000,
             node_count=i,
             line_count=int(i*1.5),
-            qchannel_delay=0.05,
-            cchannel_delay=0.05,
-            mem_cap=10,
-            init_fidelity=0.99,
             sessions=int(i/2),
-            send_rate=0.5,
+            send_rate=5, 
+            mem_cap=10
         )
-
         print(config)
         oracle.run(config, loglvl=log.logging.INFO)
 
-        break
+    fig, ax = plt.subplots()
+    ax.plot(oracle.data['node_count'], oracle.data['throughput'], label=f'10 sessions')
 
-    oracle.plot()
+    ax.set_xlabel('node count')
+    ax.set_ylabel('throughput (EP/s)')
+
+    ax.set_title('throughput analysis')
+    ax.legend()
+    plt.show()
+
+
+
 
 

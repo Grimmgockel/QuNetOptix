@@ -261,8 +261,8 @@ class BaseApp(Application):
             # KPIs
             self.success_count += 1
 
-            ts = self.state[transmit_id].start_time.sec
-            latency = self._simulator.current_time.sec - ts
+            ts = self.state[transmit_id].start_time.ms
+            latency = self._simulator.current_time.ms - ts
             self.generation_latency_agg += latency
             self.generation_latency = self.generation_latency_agg / self.success_count
 

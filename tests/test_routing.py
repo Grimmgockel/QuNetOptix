@@ -11,7 +11,7 @@ from typing import Dict, List, Optional, Tuple
 import pytest
 
 '''
-Custom double star topology for testing virtual link routing
+Custom double star topology for testing virtual link routing: minimum topology for virtual link exploitation
 '''
 class TestTopology(Topology):
     def __init__(self, nodes_apps: List[Application] = [],

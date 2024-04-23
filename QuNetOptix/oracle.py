@@ -9,6 +9,7 @@ from qns.network.network import QuantumNetwork
 from qns.simulator.simulator import Simulator
 from qns.network.topology.topo import Topology
 from qns.network.topology.topo import ClassicTopology
+from qns.network.requests import Request
 import qns.utils.log as log
 
 from vls import VLNetwork
@@ -28,8 +29,8 @@ class NetworkOracle():
         self._monitor: Optional[Monitor] = None
         self.data = pd.DataFrame()
 
-    # TODO make setup more general with network.json file
     def run(self, config: Config, loglvl: int = log.logging.INFO):
+
         # Simulator
         self._config = config
         self._sim = Simulator(config.ts, config.te, accuracy=config.acc)
@@ -39,6 +40,7 @@ class NetworkOracle():
         log.install(self._sim)
 
         # Network
+        # TODO waxman topology
         self._topo = RandomTopology(
             nodes_number=config.node_count,
             lines_number=config.line_count,
@@ -64,8 +66,10 @@ class NetworkOracle():
         self._monitor.add_attribution(name="generation_latency_avg", calculate_func=self._gather_gen_latency)
         self._monitor.add_attribution(name="sessions", calculate_func=lambda s, n, e: self._config.sessions)
         self._monitor.add_attribution(name="send_rate", calculate_func=lambda s, n, e: self._config.send_rate)
+        self._monitor.add_attribution(name="mem_cap", calculate_func=lambda s, n, e: self._config.mem_cap)
+        self._monitor.add_attribution(name="throughput", calculate_func=self._gather_throughput)
 
-        self._monitor.at_finish()
+        self._monitor.at_finish() # when to collect
         self._monitor.install(self._sim)
 
         # run sim and concat data to pd dataframe
@@ -73,27 +77,40 @@ class NetworkOracle():
         self.data = pd.concat([self.data, self._monitor.data], ignore_index=True)
 
     def _gather_gen_latency(self, s, n, e):
-        agg: float = 0.0
+        agg_gen_latency: float = 0.0
         count: int = 0
         for node in self._net.nodes:
             if node.apps[0].generation_latency > 0:
-                agg += node.apps[0].generation_latency 
+                agg_gen_latency += node.apps[0].generation_latency 
                 count += 1
-        running_avg: float = agg / count
+        try:
+            running_avg: float = agg_gen_latency / count
+        except ZeroDivisionError:
+            return -1
         return running_avg
+
+    def _gather_throughput(self, s, n, e):
+        agg_success_count = 0
+        for node in self._net.nodes:
+            agg_success_count += node.apps[0].success_count
+        throughput = float(agg_success_count) / s.te.sec
+        return throughput
+
         
     '''
     Plot data
     '''
     def plot(self):
-        x = self.data['node_count']
-        y = self.data['generation_latency_avg']
+        #x = self.data['node_count']
+        #y = self.data['generation_latency_avg']
+        x = self.data['mem_cap']
+        y = self.data['throughput']
 
         plt.plot(x, y)
-        plt.xlabel("# of nodes")
-        plt.ylabel("average gen latency")
+        plt.xlabel("number of memory cells each node")
+        plt.ylabel("throughput EP/s")
 
-        plt.title("2d plot")
+        plt.title("impact of memory capacity on routing")
 
         plt.show()
 
@@ -111,23 +128,21 @@ class NetworkOracle():
             f.write('graph {\n')
 
             if lvl == 0 or lvl == 1:
-                for node in self.network.nodes:
+                for node in self._net.nodes:
                     f.write(f'{node.name} [label=\"{node.name}\"];\n')
                 f.write('\n')
 
-                for qchannel in self.network.qchannels:
+                for qchannel in self._net.qchannels:
                     f.write(f'{qchannel.node_list[0].name}--{qchannel.node_list[1].name};\n')
 
             f.write('\n')
 
             if lvl == 1:
-                for vlink in self.network.vlinks:
-                    print(type(vlink))
-                    print(self.network.vlinks)
+                for vlink in self._net.vlinks:
                     f.write(f'{vlink.src.name}--{vlink.dest.name} [color=purple penwidth=5 constraint=False];\n')
 
             if lvl == 2:
-                for vlink in self.network.vlinks:
+                for vlink in self._net.vlinks:
                     src = vlink.src
                     dest = vlink.dest
                     f.write(f'{src.name} [label=\"{src.name}\"];\n')
