@@ -13,6 +13,7 @@ import qns.utils.log as log
 
 from vls import VLNetwork
 from base_routing import BaseApp
+from config import Config
 
 import os
 import pandas as pd
@@ -28,21 +29,27 @@ class NetworkOracle():
         self.data = pd.DataFrame()
 
     # TODO make setup more general with network.json file
-    def run(self, sim: Simulator, topo: Topology, 
-            request_count: int = 1, send_rate: int = 10, 
-            loglvl: int = log.logging.INFO):
-
+    def run(self, config: Config, loglvl: int = log.logging.INFO):
         # Simulator
-        self._sim = sim
+        self._config = config
+        self._sim = Simulator(config.ts, config.te, accuracy=config.acc)
 
         # Logger
         log.logger.setLevel(loglvl)
         log.install(self._sim)
 
         # Network
-        self._net = VLNetwork(topo=topo, classic_topo=ClassicTopology.All)
+        self._topo = RandomTopology(
+            nodes_number=config.node_count,
+            lines_number=config.line_count,
+            qchannel_args={"delay": config.qchannel_delay},
+            cchannel_args={"delay": config.cchannel_delay},
+            memory_args=[{"capacity": config.mem_cap}],
+            nodes_apps=[BaseApp(init_fidelity=config.init_fidelity)],
+        )
+        self._net = VLNetwork(topo=self._topo, classic_topo=ClassicTopology.All)
         self._net.build_route()
-        self._net.random_requests(number=request_count, attr={'send_rate': send_rate})
+        self._net.random_requests(number=config.sessions, attr={'send_rate': config.send_rate})
         self._net.install(self._sim)
 
         # Monitor
@@ -55,11 +62,13 @@ class NetworkOracle():
             len(self._net.nodes)
         ))
         self._monitor.add_attribution(name="generation_latency_avg", calculate_func=self._gather_gen_latency)
+        self._monitor.add_attribution(name="sessions", calculate_func=lambda s, n, e: self._config.sessions)
+        self._monitor.add_attribution(name="send_rate", calculate_func=lambda s, n, e: self._config.send_rate)
 
         self._monitor.at_finish()
         self._monitor.install(self._sim)
 
-        log.info(f'start new sim') # TODO more detail, 
+        # run sim and concat data to pd dataframe
         self._sim.run()
         self.data = pd.concat([self.data, self._monitor.data], ignore_index=True)
 
@@ -77,11 +86,6 @@ class NetworkOracle():
     Plot data
     '''
     def plot(self):
-        # TODO get cooler plot framework than matplotlib
-        # TODO 3d plot for fidelity
-        # TODO 2d plots for throughput against ? (concurrency paper)
-        # TODO 2d plots for latency against cost budget, edge density, # of nodes, # of sd pairs (sls paper)
-
         x = self.data['node_count']
         y = self.data['generation_latency_avg']
 

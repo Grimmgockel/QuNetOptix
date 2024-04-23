@@ -20,9 +20,17 @@ import matplotlib.pyplot as plt
 
 from vls import VLNetwork
 from oracle import NetworkOracle
+from config import Config
 from base_routing import BaseApp
 
-# TODO viz: sls and concurrency paper in one plot, second plot 3d fidelity
+
+# TODO more detail on the "start sim" print to see sim progress
+# TODO get cooler plot framework than matplotlib
+# TODO 3d plot for fidelity
+# TODO 2d plots for throughput against ? (concurrency paper)
+# TODO 2d plots for latency against cost budget, edge density, # of nodes, # of sd pairs (sls paper)
+# TODO viz: sls and concurrency paper in one plot, second plot 3d fidelity, look into routing papers for additional methodology
+# -> gather all the data for methodology first
 # TODO viz: implement custom Time class for millisecond plot
 # TODO viz: look into random topo and waxman topo to FIND A TOPOLOGY WHERE MEANINGFUL PLOTS EMERGE
 # TODO think about error/loss/decoherence models, entanglement models and hardware details
@@ -35,21 +43,27 @@ if __name__ == '__main__':
 
     oracle = NetworkOracle()
 
-    for i in range(10, 151, 5):
-        oracle.run(
-            Simulator(0, 50, accuracy=1000000),
-            RandomTopology(
-                nodes_number=i,
-                lines_number=int(i*1.5),
-                qchannel_args={"delay": 0.05},
-                cchannel_args={"delay": 0.05},
-                memory_args=[{"capacity": 10}],
-                nodes_apps=[BaseApp(init_fidelity=0.99)],
-            ),
-            request_count=int(i/2),
+    for i in range(10, 301, 5):
+
+        # arbitrary config struct
+        config = Config(
+            ts=0,
+            te=50,
+            acc=1000000,
+            node_count=i,
+            line_count=int(i*1.5),
+            qchannel_delay=0.05,
+            cchannel_delay=0.05,
+            mem_cap=10,
+            init_fidelity=0.99,
+            sessions=int(i/2),
             send_rate=0.5,
-            loglvl=log.logging.INFO
         )
+
+        print(config)
+        oracle.run(config, loglvl=log.logging.INFO)
+
+        break
 
     oracle.plot()
 
