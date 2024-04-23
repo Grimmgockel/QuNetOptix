@@ -35,31 +35,31 @@ from base_routing import BaseApp
 # implement selection algo for virtual links
 
 # TODO VIZ
+# viz: look into random topo and waxman topo to FIND A TOPOLOGY WHERE MEANINGFUL PLOTS EMERGE
 # get basic plot for 2 curves comparing base routing with custom routing
 # look into routing papers for more meaningful methodology
 # look into docs for multicore sim
 # save experiments into results.csv
 # get cooler plot framework than matplotlib
 # think about error/loss/decoherence models, entanglement models and hardware details
-# viz: look into random topo and waxman topo to FIND A TOPOLOGY WHERE MEANINGFUL PLOTS EMERGE
 if __name__ == '__main__':
 
     oracle = NetworkOracle()
 
-    for i in range(10, 151, 10):
+    for i in range(50, 301, 50):
         # arbitrary config struct
         config = Config(
             node_count=i,
             line_count=int(i*1.5),
             sessions=int(i/2),
-            send_rate=5, 
+            send_rate=1, 
             mem_cap=10
         )
         print(config)
         oracle.run(config, loglvl=log.logging.INFO)
 
     fig, ax = plt.subplots()
-    ax.plot(oracle.data['node_count'], oracle.data['throughput'], label=f'10 sessions')
+    ax.plot(oracle.data['node_count'], oracle.data['throughput'], label=f'1Hz')
 
     ax.set_xlabel('node count')
     ax.set_ylabel('throughput (EP/s)')
