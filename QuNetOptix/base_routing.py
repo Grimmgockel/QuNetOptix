@@ -32,22 +32,17 @@ from qns.models.epr import WernerStateEntanglement
 from qns.simulator.ts import Time
 import qns.utils.log as log
 
+from dataclasses import dataclass
 
+
+@dataclass
 class Transmit():
-    def __init__(self, id: str, src: QNode, dst: QNode,
-                 first_epr_name: Optional[str] = None, second_epr_name: Optional[str] = None,
-                 start_time: Optional[float] = None):
-        self.id = id
-        self.src = src
-        self.dst = dst
-        self.first_epr_name = first_epr_name
-        self.second_epr_name = second_epr_name
-        self.start_time = start_time
-
-    def __repr__(self) -> str:
-        return f"<transmit {self.id}: {self.src} -> {self.dst},\
-             epr: {self.first_epr_name}, {self.second_epr_name}>"
-
+    id: str
+    src: QNode
+    dst: QNode
+    first_epr_name: Optional[str] = None
+    second_epr_name: Optional[str] = None
+    start_time_ms: Optional[float] = None
 
 class BaseApp(Application):
     def __init__(self, send_rate: Optional[int] = None, init_fidelity: int = 0.99):
@@ -62,11 +57,14 @@ class BaseApp(Application):
 
         self.state: Dict[str, Transmit] = {}
 
+        # KPIs
         self.success = []
         self.success_count = 0
         self.send_count = 0
         self.generation_latency_agg: float = 0
-        self.generation_latency: float = 0 # running avg
+        self.generation_latency_avg: float = 0 # running avg
+        self.fidelity_agg: float = 0
+        self.fidelity_avg: float = 0 # running avg
 
         self.add_handler(self.RecvQubitHandler, [RecvQubitPacket])
         self.add_handler(self.RecvClassicPacketHandler, [RecvClassicPacket])
@@ -114,7 +112,8 @@ class BaseApp(Application):
             src=self.own,
             dst=self.dst,
             second_epr_name=epr.name,
-            start_time=self._simulator.current_time)
+            start_time_ms=self._simulator.current_time.ms
+        )
 
         log.debug(f"{self.own}: generate transmit {self.state[epr.transmit_id]}")
         if not self.memory.write(epr):
@@ -259,13 +258,9 @@ class BaseApp(Application):
             log.debug(f"{self.own}: recv success distribution {result_epr}")
 
             # KPIs
-            self.success_count += 1
+            self._update_metrics(result_epr, transmit_id)
 
-            ts = self.state[transmit_id].start_time.ms
-            latency = self._simulator.current_time.ms - ts
-            self.generation_latency_agg += latency
-            self.generation_latency = self.generation_latency_agg / self.success_count
-
+            # clear transmission
             self.state[transmit_id] = None
 
         elif cmd == "revoke":
@@ -285,6 +280,20 @@ class BaseApp(Application):
                     log.debug(
                         f"{self.own}: send {classic_packet} to {from_node}")
                     cchannel.send(classic_packet, next_hop=transmit.src)
+
+    def _update_metrics(self, result_epr: WernerStateEntanglement, transmit_id: str):
+        # success count
+        self.success_count += 1
+
+        # running average fidelity
+        self.fidelity_agg += result_epr.fidelity
+        self.fidelity_avg = self.fidelity_agg / self.success_count
+
+        # running average generation latency
+        current_time_ms = self.state[transmit_id].start_time_ms
+        latency = self._simulator.current_time.ms - current_time_ms
+        self.generation_latency_agg += latency
+        self.generation_latency_avg = self.generation_latency_agg / self.success_count
 
     def generate_qubit(self, src: QNode, dst: QNode,
                        transmit_id: Optional[str] = None) -> QuantumModel:

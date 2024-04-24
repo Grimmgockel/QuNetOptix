@@ -22,7 +22,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from vls import VLNetwork
 from oracle import NetworkOracle
 from config import Config
-from base_routing import BaseApp
+import base_routing
 
 
 
@@ -49,11 +49,17 @@ if __name__ == '__main__':
     for i in range(50, 301, 50):
         # arbitrary config struct
         config = Config(
+            te=0,
+            ts=50,
+            acc=1000000,
             node_count=i,
             line_count=int(i*1.5),
-            sessions=int(i/2),
-            send_rate=1, 
-            mem_cap=10
+            qchannel_delay = 0.05,
+            cchannel_delay= 0.05,
+            mem_cap = 10,
+            sessions= 50,
+            send_rate= 0.05,
+            app = base_routing.BaseApp(init_fidelity=0.99),
         )
         print(config)
         oracle.run(config, loglvl=log.logging.INFO)

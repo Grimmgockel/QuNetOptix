@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any 
 from qns.entity.monitor.monitor import Monitor, MonitorEvent
 from qns.network.topology import RandomTopology
 from qns.simulator.ts import Time
@@ -13,7 +13,6 @@ from qns.network.requests import Request
 import qns.utils.log as log
 
 from vls import VLNetwork
-from base_routing import BaseApp
 from config import Config
 
 import os
@@ -47,7 +46,7 @@ class NetworkOracle():
             qchannel_args={"delay": config.qchannel_delay},
             cchannel_args={"delay": config.cchannel_delay},
             memory_args=[{"capacity": config.mem_cap}],
-            nodes_apps=[BaseApp(init_fidelity=config.init_fidelity)],
+            nodes_apps=[config.app],
         )
         self._net = VLNetwork(topo=self._topo, classic_topo=ClassicTopology.All)
         self._net.build_route()
@@ -80,8 +79,8 @@ class NetworkOracle():
         agg_gen_latency: float = 0.0
         count: int = 0
         for node in self._net.nodes:
-            if node.apps[0].generation_latency > 0:
-                agg_gen_latency += node.apps[0].generation_latency 
+            if node.apps[0].generation_latency_avg > 0:
+                agg_gen_latency += node.apps[0].generation_latency_avg
                 count += 1
         try:
             running_avg: float = agg_gen_latency / count
