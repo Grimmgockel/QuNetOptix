@@ -29,7 +29,7 @@ class NetworkOracle():
         self._monitor: Optional[Monitor] = None
         self.data = pd.DataFrame()
 
-    def run(self, config: Config, loglvl: int = log.logging.INFO):
+    def run(self, config: Config, loglvl: int = log.logging.INFO, monitor: bool = True):
 
         # Simulator
         self._sim = Simulator(config.ts, config.te, accuracy=config.acc)
@@ -39,29 +39,39 @@ class NetworkOracle():
         log.install(self._sim)
 
         # Network
-        # TODO waxman topology
         self._net = VLNetwork(topo=config.topo, classic_topo=ClassicTopology.All)
         self._net.build_route()
-        self._net.random_requests(number=config.sessions, attr={'send_rate': config.send_rate})
+        if config.job.sessions is None:
+            self._net.random_requests(number=config.job.session_count, attr={'send_rate': config.send_rate})
+        else: # custom sessions
+            for session in config.job.sessions:
+                self._net.add_request(
+                    src=self._net.get_node(session[0]),
+                    dest=self._net.get_node(session[1]),
+                    attr={'send_rate': config.send_rate}
+                )
         self._net.install(self._sim)
 
         # Monitor
-        self._monitor = Monitor(network=self._net)
+        if monitor:
+            self._monitor = Monitor(network=self._net)
 
-        self._monitor.add_attribution(name="success", calculate_func=lambda s, n, e: [req.src.apps[0].success_count for req in n.requests][0])
-        self._monitor.add_attribution(name="node_count", calculate_func=lambda s, n, e: len(self._net.nodes))
-        self._monitor.add_attribution(name="generation_latency_avg", calculate_func=self._gather_gen_latency)
-        self._monitor.add_attribution(name="sessions", calculate_func=lambda s, n, e: config.sessions)
-        self._monitor.add_attribution(name="send_rate", calculate_func=lambda s, n, e: config.send_rate)
-        self._monitor.add_attribution(name="mem_cap", calculate_func=lambda s, n, e: config.topo.memory_args[0]['capacity'])
-        self._monitor.add_attribution(name="throughput", calculate_func=self._gather_throughput)
-
-        self._monitor.at_finish() # when to collect
-        self._monitor.install(self._sim)
-
+            self._monitor.add_attribution(name="success", calculate_func=lambda s, n, e: [req.src.apps[0].success_count for req in n.requests][0])
+            self._monitor.add_attribution(name="node_count", calculate_func=lambda s, n, e: len(self._net.nodes))
+            self._monitor.add_attribution(name="generation_latency_avg", calculate_func=self._gather_gen_latency)
+            self._monitor.add_attribution(name="session_count", calculate_func=lambda s, n, e: config.job.session_count)
+            self._monitor.add_attribution(name="send_rate", calculate_func=lambda s, n, e: config.send_rate)
+            self._monitor.add_attribution(name="mem_cap", calculate_func=lambda s, n, e: config.topo.memory_args[0]['capacity'])
+            self._monitor.add_attribution(name="throughput", calculate_func=self._gather_throughput)
+    
+            self._monitor.at_finish() # when to collect
+            self._monitor.install(self._sim)
+    
         # run sim and concat data to pd dataframe
         self._sim.run()
-        self.data = pd.concat([self.data, self._monitor.data], ignore_index=True)
+
+        if monitor: 
+            self.data = pd.concat([self.data, self._monitor.data], ignore_index=True)
 
     def _gather_gen_latency(self, s, n, e):
         agg_gen_latency: float = 0.0

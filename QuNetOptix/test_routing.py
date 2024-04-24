@@ -3,13 +3,16 @@ from qns.network.topology.topo import ClassicTopology
 from qns.entity.node.app import Application
 from qns.entity.qchannel.qchannel import QuantumChannel
 from qns.entity.node.node import QNode
+from qns.network.requests import Request
 from qns.network.topology import Topology
+import qns.utils.log as log
 
 from typing import Dict, List, Optional, Tuple
 import pytest
 
 from oracle import NetworkOracle
 from config import Config
+from config import Job
 from routing import VLEnabledDistributionApp
 
 
@@ -17,12 +20,8 @@ from routing import VLEnabledDistributionApp
 Custom double star topology for testing virtual link routing: minimum topology for virtual link exploitation
 '''
 class TestTopology(Topology):
-    def __init__(self, nodes_apps: List[Application] = [],
-                 qchannel_args: Dict = {}, cchannel_args: Dict = {},
-                 memory_args: Optional[List[Dict]] = {}):
-        super().__init__(12, nodes_apps=nodes_apps,
-                         qchannel_args=qchannel_args, cchannel_args=cchannel_args,
-                         memory_args=memory_args)
+    def __init__(self):
+        super().__init__(12, nodes_apps=[VLEnabledDistributionApp(init_fidelity=0.99)])
 
     def build(self) -> Tuple[List[QNode], List[QuantumChannel]]:
         nl: List[QNode] = []
@@ -80,5 +79,19 @@ class TestTopology(Topology):
 if __name__ == '__main__': 
     oracle = NetworkOracle()
 
+    config = Config(
+        ts=0,
+        te=10,
+        acc=1000000,
+        send_rate=0.5,
+        topo=TestTopology(),
+        job=Job.custom([('n0', 'n11')])
+    )
 
-    print("success.")
+    print(config)
+    oracle.run(config, loglvl=log.logging.DEBUG, monitor=False)
+    oracle.generate_dot_file("lvl0_net.dot", lvl=0)
+    oracle.generate_dot_file("lvl1_net.dot", lvl=1)
+    oracle.generate_dot_file("lvl2_net.dot", lvl=2)
+    
+

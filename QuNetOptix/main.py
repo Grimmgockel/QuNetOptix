@@ -22,6 +22,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from vls import VLNetwork
 from oracle import NetworkOracle
 from config import Config
+from config import Job
 import base_routing
 
 
@@ -52,7 +53,6 @@ if __name__ == '__main__':
             ts=0,
             te=50,
             acc=1000000,
-            sessions= int(i/2),
             send_rate= 0.05,
             topo=RandomTopology(
                 nodes_number=i,
@@ -61,7 +61,8 @@ if __name__ == '__main__':
                 cchannel_args={"delay": 0.05},
                 memory_args=[{"capacity": 10}],
                 nodes_apps=[base_routing.BaseApp(init_fidelity=0.99)],
-            )
+            ),
+            job=Job.random(int(i/2)),
         )
         print(config)
         oracle.run(config, loglvl=log.logging.INFO)
