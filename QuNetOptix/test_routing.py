@@ -11,9 +11,14 @@ from typing import Dict, List, Optional, Tuple
 import pytest
 
 from oracle import NetworkOracle
+
 from config import Config
 from config import Job
+
 from routing import VLEnabledDistributionApp
+
+from vls import VLAwareQNode
+from vls import VLMaintenanceApp
 
 
 '''
@@ -21,14 +26,14 @@ Custom double star topology for testing virtual link routing: minimum topology f
 '''
 class TestTopology(Topology):
     def __init__(self):
-        super().__init__(12, nodes_apps=[VLEnabledDistributionApp(init_fidelity=0.99)])
+        super().__init__(12, nodes_apps=[VLEnabledDistributionApp(init_fidelity=0.99), VLMaintenanceApp()])
 
-    def build(self) -> Tuple[List[QNode], List[QuantumChannel]]:
-        nl: List[QNode] = []
+    def build(self) -> Tuple[List[VLAwareQNode], List[QuantumChannel]]:
+        nl: List[VLAwareQNode] = []
         ll = []
 
         for i in range(self.nodes_number):
-            n = QNode(f'n{i}')
+            n = VLAwareQNode(f'n{i}')
             nl.append(n)
 
         for i in range(11):
@@ -76,6 +81,7 @@ class TestTopology(Topology):
         return nl, ll
 
 
+# TODO VLMaintenanceApp first w/ custom events and quantum model (no decoherence)
 if __name__ == '__main__': 
     oracle = NetworkOracle()
 
@@ -85,11 +91,11 @@ if __name__ == '__main__':
         acc=1000000,
         send_rate=0.5,
         topo=TestTopology(),
-        job=Job.custom([('n0', 'n11')])
+        job=Job.custom(sessions=[('n0', 'n11')])
     )
 
-    print(config)
-    oracle.run(config, loglvl=log.logging.DEBUG, monitor=False)
+    #print(config)
+    oracle.run(config, loglvl=log.logging.INFO, monitor=False)
     oracle.generate_dot_file("lvl0_net.dot", lvl=0)
     oracle.generate_dot_file("lvl1_net.dot", lvl=1)
     oracle.generate_dot_file("lvl2_net.dot", lvl=2)

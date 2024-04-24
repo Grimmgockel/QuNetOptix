@@ -97,9 +97,10 @@ class NetworkOracle():
     '''
     Vizualize network level as dot file (https://arxiv.org/abs/2306.05982)
     '''
-    def generate_dot_file(self, filename: str, lvl=0): 
-        if lvl < 0 or lvl > 2:
+    def generate_dot_file(self, filename: str, lvl=0):
+        if lvl not in range(3):
             print("Invalid plot level")
+            return
 
         script_dir = os.path.dirname(os.path.abspath(__file__))
         dot_file_path = os.path.join(script_dir, filename)
@@ -107,9 +108,9 @@ class NetworkOracle():
         with open(dot_file_path, 'w') as f:
             f.write('graph {\n')
 
-            if lvl == 0 or lvl == 1:
+            if lvl in [0, 1]:
                 for node in self._net.nodes:
-                    f.write(f'{node.name} [label=\"{node.name}\"];\n')
+                    f.write(f'{node.name} [label="{node.name}"];\n')
                 f.write('\n')
 
                 for qchannel in self._net.qchannels:
@@ -125,22 +126,17 @@ class NetworkOracle():
                 for vlink in self._net.vlinks:
                     src = vlink.src
                     dest = vlink.dest
-                    f.write(f'{src.name} [label=\"{src.name}\"];\n')
-                    f.write(f'{dest.name} [label=\"{dest.name}\"];\n')
+                    f.write(f'{src.name} [label="{src.name}"];\n')
+                    f.write(f'{dest.name} [label="{dest.name}"];\n')
                     f.write(f'{src.name}--{dest.name} [color=purple penwidth=5 constraint=False];\n')
                     f.write('\n')
 
             if lvl == 0:
                 for req in self._net.requests:
-                    [(_, _, path)] = self._net.query_route(src=req.src, dest=req.dest)
-                    for i in range(len(path)-1):
-                        src = path[i]
-                        dst = path[i+1]
-                        f.write(f'{src.name}--{dst.name} [color=red penwidth=1 constraint=False];\n')
-
+                    path = self._net.query_route(src=req.src, dest=req.dest)[0][-1]
+                    for src, dest in zip(path, path[1:]):
+                        f.write(f'{src.name}--{dest.name} [color=red penwidth=1 constraint=False];\n')
 
             f.write('}')
-
-
 
 
