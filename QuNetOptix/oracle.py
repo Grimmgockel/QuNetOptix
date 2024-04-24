@@ -14,6 +14,7 @@ import qns.utils.log as log
 
 from vls import VLNetwork
 from config import Config
+from base_routing import BaseApp
 
 import os
 import pandas as pd
@@ -46,7 +47,7 @@ class NetworkOracle():
             qchannel_args={"delay": config.qchannel_delay},
             cchannel_args={"delay": config.cchannel_delay},
             memory_args=[{"capacity": config.mem_cap}],
-            nodes_apps=[config.app],
+            nodes_apps=[BaseApp(init_fidelity=0.99)],
         )
         self._net = VLNetwork(topo=self._topo, classic_topo=ClassicTopology.All)
         self._net.build_route()
@@ -56,12 +57,8 @@ class NetworkOracle():
         # Monitor
         self._monitor = Monitor(network=self._net)
 
-        self._monitor.add_attribution(name="success", calculate_func=lambda s, n, e: (
-            [req.src.apps[0].success_count for req in n.requests][0]
-        ))
-        self._monitor.add_attribution(name="node_count", calculate_func=lambda s, n, e: (
-            len(self._net.nodes)
-        ))
+        self._monitor.add_attribution(name="success", calculate_func=lambda s, n, e: [req.src.apps[0].success_count for req in n.requests][0])
+        self._monitor.add_attribution(name="node_count", calculate_func=lambda s, n, e: len(self._net.nodes))
         self._monitor.add_attribution(name="generation_latency_avg", calculate_func=self._gather_gen_latency)
         self._monitor.add_attribution(name="sessions", calculate_func=lambda s, n, e: self._config.sessions)
         self._monitor.add_attribution(name="send_rate", calculate_func=lambda s, n, e: self._config.send_rate)
@@ -95,23 +92,6 @@ class NetworkOracle():
         throughput = float(agg_success_count) / s.te.sec
         return throughput
 
-        
-    '''
-    Plot data
-    '''
-    def plot(self):
-        #x = self.data['node_count']
-        #y = self.data['generation_latency_avg']
-        x = self.data['mem_cap']
-        y = self.data['throughput']
-
-        plt.plot(x, y)
-        plt.xlabel("number of memory cells each node")
-        plt.ylabel("throughput EP/s")
-
-        plt.title("impact of memory capacity on routing")
-
-        plt.show()
 
     '''
     Vizualize network level as dot file (https://arxiv.org/abs/2306.05982)

@@ -42,7 +42,7 @@ class Transmit():
     dst: QNode
     first_epr_name: Optional[str] = None
     second_epr_name: Optional[str] = None
-    start_time_ms: Optional[float] = None
+    start_time_s: Optional[float] = None
 
 class BaseApp(Application):
     def __init__(self, send_rate: Optional[int] = None, init_fidelity: int = 0.99):
@@ -112,7 +112,7 @@ class BaseApp(Application):
             src=self.own,
             dst=self.dst,
             second_epr_name=epr.name,
-            start_time_ms=self._simulator.current_time.ms
+            start_time_s=self._simulator.current_time.sec
         )
 
         log.debug(f"{self.own}: generate transmit {self.state[epr.transmit_id]}")
@@ -290,9 +290,8 @@ class BaseApp(Application):
         self.fidelity_avg = self.fidelity_agg / self.success_count
 
         # running average generation latency
-        current_time_ms = self.state[transmit_id].start_time_ms
-        latency = self._simulator.current_time.ms - current_time_ms
-        self.generation_latency_agg += latency
+        generation_latency = self._simulator.current_time.sec - self.state[transmit_id].start_time_s
+        self.generation_latency_agg += generation_latency
         self.generation_latency_avg = self.generation_latency_agg / self.success_count
 
     def generate_qubit(self, src: QNode, dst: QNode,

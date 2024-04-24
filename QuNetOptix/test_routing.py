@@ -8,7 +8,10 @@ from qns.network.topology import Topology
 from typing import Dict, List, Optional, Tuple
 import pytest
 
-from QuNetOptix.oracle import NetworkOracle
+from oracle import NetworkOracle
+from config import Config
+from routing import VLEnabledDistributionApp
+
 
 '''
 Custom double star topology for testing virtual link routing: minimum topology for virtual link exploitation
@@ -75,5 +78,7 @@ class TestTopology(Topology):
 
 
 if __name__ == '__main__': 
-    oracle = oracle.NetworkOracle()
+    oracle = NetworkOracle()
+
+
     print("success.")

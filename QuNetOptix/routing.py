@@ -5,14 +5,6 @@ from qns.simulator.event import Event, func_to_event
 from qns.network.route import DijkstraRouteAlgorithm, RouteImpl
 from qns.network.topology import RandomTopology, WaxmanTopology
 
-'''
-Node application for entanglement distribution over physical and virtual links
-'''
-class VLEnabledDistributionApp(EntanglementDistributionApp):
-    # TODO test this in pytest suite
-    pass
-
-
 class VLAwareNode(QNode):
     pass
 
@@ -24,3 +16,10 @@ class CustomWax(WaxmanTopology):
 
 class VLRouting(RouteImpl):
     pass
+
+'''
+Node application for entanglement distribution over physical and virtual links
+'''
+class VLEnabledDistributionApp(EntanglementDistributionApp):
+    pass
+
