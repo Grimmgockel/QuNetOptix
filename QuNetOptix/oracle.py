@@ -32,7 +32,6 @@ class NetworkOracle():
     def run(self, config: Config, loglvl: int = log.logging.INFO):
 
         # Simulator
-        self._config = config
         self._sim = Simulator(config.ts, config.te, accuracy=config.acc)
 
         # Logger
@@ -41,15 +40,7 @@ class NetworkOracle():
 
         # Network
         # TODO waxman topology
-        self._topo = RandomTopology(
-            nodes_number=config.node_count,
-            lines_number=config.line_count,
-            qchannel_args={"delay": config.qchannel_delay},
-            cchannel_args={"delay": config.cchannel_delay},
-            memory_args=[{"capacity": config.mem_cap}],
-            nodes_apps=[BaseApp(init_fidelity=0.99)],
-        )
-        self._net = VLNetwork(topo=self._topo, classic_topo=ClassicTopology.All)
+        self._net = VLNetwork(topo=config.topo, classic_topo=ClassicTopology.All)
         self._net.build_route()
         self._net.random_requests(number=config.sessions, attr={'send_rate': config.send_rate})
         self._net.install(self._sim)
@@ -60,9 +51,9 @@ class NetworkOracle():
         self._monitor.add_attribution(name="success", calculate_func=lambda s, n, e: [req.src.apps[0].success_count for req in n.requests][0])
         self._monitor.add_attribution(name="node_count", calculate_func=lambda s, n, e: len(self._net.nodes))
         self._monitor.add_attribution(name="generation_latency_avg", calculate_func=self._gather_gen_latency)
-        self._monitor.add_attribution(name="sessions", calculate_func=lambda s, n, e: self._config.sessions)
-        self._monitor.add_attribution(name="send_rate", calculate_func=lambda s, n, e: self._config.send_rate)
-        self._monitor.add_attribution(name="mem_cap", calculate_func=lambda s, n, e: self._config.mem_cap)
+        self._monitor.add_attribution(name="sessions", calculate_func=lambda s, n, e: config.sessions)
+        self._monitor.add_attribution(name="send_rate", calculate_func=lambda s, n, e: config.send_rate)
+        self._monitor.add_attribution(name="mem_cap", calculate_func=lambda s, n, e: config.topo.memory_args[0]['capacity'])
         self._monitor.add_attribution(name="throughput", calculate_func=self._gather_throughput)
 
         self._monitor.at_finish() # when to collect

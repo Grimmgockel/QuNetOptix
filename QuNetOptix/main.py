@@ -52,14 +52,16 @@ if __name__ == '__main__':
             ts=0,
             te=50,
             acc=1000000,
-            node_count=i,
-            line_count=int(i*1.5),
-            qchannel_delay = 0.05,
-            cchannel_delay= 0.05,
-            mem_cap = 10,
             sessions= int(i/2),
             send_rate= 0.05,
-            app = base_routing.BaseApp(init_fidelity=0.99),
+            topo=RandomTopology(
+                nodes_number=i,
+                lines_number=int(i*1.5),
+                qchannel_args={"delay": 0.05},
+                cchannel_args={"delay": 0.05},
+                memory_args=[{"capacity": 10}],
+                nodes_apps=[base_routing.BaseApp(init_fidelity=0.99)],
+            )
         )
         print(config)
         oracle.run(config, loglvl=log.logging.INFO)
