@@ -130,6 +130,15 @@ class NetworkOracle():
                     f.write(f'{src.name}--{dest.name} [color=purple penwidth=5 constraint=False];\n')
                     f.write('\n')
 
+            if lvl == 0:
+                for req in self._net.requests:
+                    [(_, _, path)] = self._net.query_route(src=req.src, dest=req.dest)
+                    for i in range(len(path)-1):
+                        src = path[i]
+                        dst = path[i+1]
+                        f.write(f'{src.name}--{dst.name} [color=red penwidth=1 constraint=False];\n')
+
+
             f.write('}')
 
 

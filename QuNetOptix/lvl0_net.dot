@@ -24,4 +24,9 @@ n8--n9;
 n11--n9;
 n10--n9;
 
+n0--n2 [color=red penwidth=1 constraint=False];
+n2--n5 [color=red penwidth=1 constraint=False];
+n5--n6 [color=red penwidth=1 constraint=False];
+n6--n9 [color=red penwidth=1 constraint=False];
+n9--n11 [color=red penwidth=1 constraint=False];
 }
