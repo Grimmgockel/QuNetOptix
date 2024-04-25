@@ -436,6 +436,12 @@ class VLMaintenanceApp(VLApp):
         self.start_vlink_distribution()
 
 
+class VLEnabledRouteAlgorithm(RouteImpl):
+    # TODO determine how vlinks should be treated 
+    # - EITHER: every node knows its closest vlink (start at lvl2 graph and work down, internet adressing paper)
+    # - OR: simple dijkstra on lvl1 graph
+    pass
+
 '''
 Node application for entanglement distribution over physical and virtual links
 '''
