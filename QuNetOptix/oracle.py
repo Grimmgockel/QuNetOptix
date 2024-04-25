@@ -63,6 +63,7 @@ class NetworkOracle():
             self._monitor.add_attribution(name="send_rate", calculate_func=lambda s, n, e: config.send_rate)
             self._monitor.add_attribution(name="mem_cap", calculate_func=lambda s, n, e: config.topo.memory_args[0]['capacity'])
             self._monitor.add_attribution(name="throughput", calculate_func=self._gather_throughput)
+            # TODO success_count / send_count (success_rate)
     
             self._monitor.at_finish() # when to collect
             self._monitor.install(self._sim)
