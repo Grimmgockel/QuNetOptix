@@ -5,13 +5,15 @@ from qns.entity.qchannel import QuantumChannel
 from qns.simulator.simulator import Simulator
 from qns.models.core import QuantumModel
 from qns.models.epr import WernerStateEntanglement
+from qns.network.requests import Request
+from qns.simulator.event import func_to_event
 import qns.utils.log as log
 
 from vlaware_qnode import VLAwareQNode
 from transmit import Transmit
 from vl_app import VLApp
 
-from typing import List, Tuple, Type
+from typing import List, Tuple, Type, Optional
 
 class VLEnabledRouteAlgorithm(RouteImpl):
     # TODO determine how vlinks should be treated 
@@ -30,13 +32,37 @@ class VLEnabledRouteAlgorithm(RouteImpl):
 Node application for entanglement distribution over physical and virtual links
 '''
 class VLEnabledDistributionApp(VLApp):
-    def install(self, node: QNode, simulator: Simulator):
-        super().install(node, simulator)
+    def __init__(self):
+        super().__init__()
 
         # members
         self.classic_msg_type: str = 'standard'
         self.entanglement_type: Type[QuantumModel] = WernerStateEntanglement # TODO custom entanglement model for no ambiguity
         self.app_name: str = "vlink enabled routing"
+
+    def install(self, node: QNode, simulator: Simulator):
+        super().install(node, simulator)
+
+        if self.own.requests:
+            request: Request = self.own.requests[0] # allow for one request per node
+            self.src = request.src if self.own == request.dest else None
+            self.dst = request.dest if self.own == request.src else None
+        self.launch(simulator)
+
+    def start_ep_distribution(self):
+        epr = self.generate_qubit(self.own, self.dst, None)
+
+        # save 
+        transmit = Transmit(
+            id=epr.transmit_id,
+            src=self.own,
+            dst=self.dst,
+            second_epr_name=epr.name,
+            start_time_s=self._simulator.current_time.sec,
+            vl=False
+        )
+
+        log.debug(f"{self}: start ep dist")
 
     def receive_qubit(self, node: VLAwareQNode, event: RecvClassicPacket):
         pass

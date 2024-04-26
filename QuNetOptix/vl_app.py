@@ -1,12 +1,14 @@
 from qns.network.network import QuantumNetwork
 from qns.network.protocol.entanglement_distribution import Transmit
 from qns.entity.memory import QuantumMemory
+from qns.network.requests import Request
 from qns.entity.node.app import Application
 from qns.models.core import QuantumModel
 from qns.entity.qchannel.qchannel import RecvQubitPacket
 from qns.entity.cchannel.cchannel import ClassicChannel, RecvClassicPacket
 from qns.entity.node import QNode
 from qns.simulator.simulator import Simulator
+from qns.simulator.event import func_to_event
 
 from transmit import Transmit
 from vlaware_qnode import VLAwareQNode
@@ -36,7 +38,11 @@ class VLApp(ABC, Application):
         self.own: VLAwareQNode = None 
         self.memory: QuantumMemory = None 
         self.net: QuantumNetwork = None 
-        self.state: Dict[str, Transmit] = {}
+        self.trans_registry: Dict[str, Transmit] = {}
+
+        # ep info can be vlink or standard ep
+        self.src: Optional[VLAwareQNode] = None
+        self.dst: Optional[VLAwareQNode] = None
 
         # communication
         self.add_handler(self.RecvQubitHandler, [RecvQubitPacket])
@@ -54,6 +60,12 @@ class VLApp(ABC, Application):
         self.memory: QuantumMemory = self.own.memories[0]
         self.net: QuantumNetwork = self.own.network
 
+    def launch(self, simulator: Simulator):
+        if self.dst is not None: # sender
+            t = simulator.ts
+            event = func_to_event(t, self.start_ep_distribution, by=self)
+            self._simulator.add_event(event)
+
     def RecvQubitHandler(self, node: VLAwareQNode, event: RecvQubitPacket):
         if not isinstance(event.qubit, self.entanglement_type): 
             return
@@ -64,6 +76,10 @@ class VLApp(ABC, Application):
         if not msg['type'] == self.classic_msg_type:
             return
         self.receive_classic(node, event)
+
+    @abstractmethod
+    def start_ep_distribution(self):
+        pass
 
     @abstractmethod
     def receive_qubit(node: VLAwareQNode, event: RecvQubitPacket):
@@ -108,13 +124,13 @@ class VLApp(ABC, Application):
     Remote access
     '''
     def query_transmit(self, id: int):
-        return self.state[id]
+        return self.trans_registry[id]
 
     '''
     Remote access
     '''
     def set_first_epr(self, epr: QuantumModel, transmit_id: str):
-        transmit = self.state.get(transmit_id, None)
+        transmit = self.trans_registry.get(transmit_id, None)
         if transmit is None or transmit.first_epr_name is None:
             return
         self.memory.read(transmit.first_epr_name)
@@ -125,7 +141,7 @@ class VLApp(ABC, Application):
     Remote access
     '''
     def set_second_epr(self, epr: QuantumModel, transmit_id: str):
-        transmit = self.state.get(transmit_id, None)
+        transmit = self.trans_registry.get(transmit_id, None)
         if transmit is None or transmit.second_epr_name is None:
             return
         self.memory.read(transmit.second_epr_name)

@@ -29,52 +29,46 @@ class VLMaintenanceApp(VLApp):
         self.entanglement_type: Type[QuantumModel] = BellStateEntanglement # TODO custom entanglement model for no ambiguity
         self.app_name: str = 'vlink maintenance'
 
-        # vlink info
-        self.vlink_src: Optional[VLAwareQNode] = None
-        self.vlink_dst: Optional[VLAwareQNode] = None
 
     def install(self, node: QNode, simulator: Simulator):
         super().install(node, simulator)
 
         if self.own.vlinks:
             self.own.has_vlink = True
-            vlink_request: Request = self.own.vlinks[0] 
-            self.vlink_src = vlink_request.src if self.own == vlink_request.dest else None
-            self.vlink_dst = vlink_request.dest if self.own == vlink_request.src else None
+            request: Request = self.own.vlinks[0] 
+            self.src = request.src if self.own == request.dest else None
+            self.dst = request.dest if self.own == request.src else None
+        self.launch(simulator)
 
-        if self.vlink_dst is not None: # node is sender of vlink
-            t = simulator.ts
-            event = func_to_event(t, self.start_vlink_distribution, by=self)
-            self._simulator.add_event(event)
 
     '''
     Initiate EP distribution distributed algorithm as a sender node
     '''
-    def start_vlink_distribution(self):
-        epr = self.generate_qubit(self.own, self.vlink_dst, None)
+    def start_ep_distribution(self):
+        epr = self.generate_qubit(self.own, self.dst, None)
 
         # save transmission
         transmit = Transmit(
             id=epr.transmit_id,
             src=self.own,
-            dst=self.vlink_dst,
+            dst=self.dst,
             second_epr_name=epr.name,
             start_time_s=self._simulator.current_time.sec,
             vl=True
         )
-        self.state[epr.transmit_id] = transmit
+        self.trans_registry[epr.transmit_id] = transmit
 
         store_success = self.memory.write(epr)
         if not store_success:
             self.memory.read(epr)
-            self.state[epr.transmit_id] = None
+            self.trans_registry[epr.transmit_id] = None
 
         log.debug(f'{self}: start new vlink distribution: {transmit}')
         self.send_count += 1
         self.distribute_qubit_adjacent(epr.transmit_id)
 
     def distribute_qubit_adjacent(self, transmit_id: str):
-        transmit = self.state.get(transmit_id)
+        transmit = self.trans_registry.get(transmit_id)
         #if transmit is None:
             #return
         epr = self.memory.get(transmit.second_epr_name)
@@ -117,7 +111,7 @@ class VLMaintenanceApp(VLApp):
             second_epr_name=next_epr.name,
             vl=True
         )
-        self.state[epr.transmit_id] = updated_transmit
+        self.trans_registry[epr.transmit_id] = updated_transmit
 
         # storage
         storage_success_1 = self.memory.write(epr)
@@ -155,7 +149,7 @@ class VLMaintenanceApp(VLApp):
         # receive message
         msg = e.packet.get()
         log.debug(f'{self}: received {msg} from {src_node.name}')
-        transmit = self.state[msg["transmit_id"]]
+        transmit = self.trans_registry[msg["transmit_id"]]
 
         # handle classical message
         self.control.get(msg["cmd"])(src_node, src_cchannel, transmit)
@@ -194,9 +188,9 @@ class VLMaintenanceApp(VLApp):
             # cleanup on receiver's side
             result_epr = self.memory.read(transmit.first_epr_name)
             self.memory.read(transmit.second_epr_name)
-            self.state[transmit.id] = None
+            self.trans_registry[transmit.id] = None
 
-            # TODO this must be a test
+            # TODO this could be a test case
             #src_app = transmit.src.get_apps(VLMaintenanceApp)[0]
             #src_epr = src_app.get_second_epr(transmit.id)
             #assert(result_epr == src_epr)
@@ -228,14 +222,14 @@ class VLMaintenanceApp(VLApp):
         log.info(f'{self}: established vlink ({self.own.name}, {src_node.name})')
 
         # TODO just for testing seperate app communication
-        classic_packet = ClassicPacket(
-            msg={'cmd': 'fun', 'transmit_id': 0, 'type': 'standard'},
-            src=self.own,
-            dest=src_node
-        )
-        cchannel: Optional[ClassicChannel] = self.own.get_cchannel(src_node) 
-        log.debug(f'{self}: sending {classic_packet.msg} to {src_node.name}')
-        cchannel.send(classic_packet, next_hop=src_node)
+        #classic_packet = ClassicPacket(
+            #msg={'cmd': 'fun', 'transmit_id': 0, 'type': 'standard'},
+            #src=self.own,
+            #dest=src_node
+        #)
+        ##cchannel: Optional[ClassicChannel] = self.own.get_cchannel(src_node) 
+        #log.debug(f'{self}: sending {classic_packet.msg} to {src_node.name}')
+        #cchannel.send(classic_packet, next_hop=src_node)
 
 
 
@@ -254,7 +248,7 @@ class VLMaintenanceApp(VLApp):
         log.debug(f'{self}: cleaning memory')
         self.memory.read(transmit.first_epr_name)
         self.memory.read(transmit.second_epr_name)
-        self.state[transmit.id] = None
+        self.trans_registry[transmit.id] = None
         if self.own != None: # recurse back to source node
             classic_packet = ClassicPacket(
                 msg={'cmd': 'revoke', "transmit_id": transmit.id, 'type': 'vlink'},
@@ -266,7 +260,7 @@ class VLMaintenanceApp(VLApp):
             cchannel.send(classic_packet, next_hop=transmit.src)
 
     def _restore(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        self.memory.read(self.state[transmit.id].second_epr_name)
-        self.state[transmit.id] = None
+        self.memory.read(self.trans_registry[transmit.id].second_epr_name)
+        self.trans_registry[transmit.id] = None
 
-        self.start_vlink_distribution()
+        self.start_ep_distribution()
