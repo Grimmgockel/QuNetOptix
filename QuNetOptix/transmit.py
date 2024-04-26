@@ -13,4 +13,3 @@ class Transmit:
     first_epr_name: Optional[str] = None
     second_epr_name: Optional[str] = None
     start_time_s: Optional[float] = None
-    vl: bool = False

@@ -53,8 +53,7 @@ class VLMaintenanceApp(VLApp):
             src=self.own,
             dst=self.dst,
             second_epr_name=epr.name,
-            start_time_s=self._simulator.current_time.sec,
-            vl=True
+            start_time_s=self._simulator.current_time.sec
         )
         self.trans_registry[epr.transmit_id] = transmit
 
@@ -108,8 +107,7 @@ class VLMaintenanceApp(VLApp):
             src=epr.src,
             dst=epr.dst,
             first_epr_name=epr.name,
-            second_epr_name=next_epr.name,
-            vl=True
+            second_epr_name=next_epr.name
         )
         self.trans_registry[epr.transmit_id] = updated_transmit
 

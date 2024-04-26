@@ -58,11 +58,22 @@ class VLEnabledDistributionApp(VLApp):
             src=self.own,
             dst=self.dst,
             second_epr_name=epr.name,
-            start_time_s=self._simulator.current_time.sec,
-            vl=False
+            start_time_s=self._simulator.current_time.sec
         )
+        self.trans_registry[epr.transmit_id] = transmit
 
         log.debug(f"{self}: start ep dist")
+        store_success = self.memory.write(epr)
+        if not store_success:
+            self.memory.read(epr)
+            self.trans_registry[epr.transmit_id] = None
+
+        log.debug(f'{self}: start new vlink distribution: {transmit}')
+        self.send_count += 1
+        self.distribute_qubit_adjacent(epr.transmit_id)
+    
+    def distribute_qubit_adjacent(self, transmit_id: str):
+        pass
 
     def receive_qubit(self, node: VLAwareQNode, event: RecvClassicPacket):
         pass
