@@ -38,8 +38,6 @@ class VLEnabledDistributionApp(VLApp):
         self.entanglement_type: Type[QuantumModel] = WernerStateEntanglement # TODO custom entanglement model for no ambiguity
         self.app_name: str = "vlink enabled routing"
 
-        self.own = self._node
-
     def receive_qubit(self, node: VLAwareQNode, event: RecvClassicPacket):
         pass
 

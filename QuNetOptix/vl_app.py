@@ -5,6 +5,8 @@ from qns.entity.node.app import Application
 from qns.models.core import QuantumModel
 from qns.entity.qchannel.qchannel import RecvQubitPacket
 from qns.entity.cchannel.cchannel import ClassicChannel, RecvClassicPacket
+from qns.entity.node import QNode
+from qns.simulator.simulator import Simulator
 
 from transmit import Transmit
 from vlaware_qnode import VLAwareQNode
@@ -44,6 +46,13 @@ class VLApp(ABC, Application):
         self.success_eprs = []
         self.success_count = 0
         self.send_count = 0
+
+    def install(self, node: QNode, simulator: Simulator):
+        super().install(node, simulator)
+
+        self.own: VLAwareQNode = self._node
+        self.memory: QuantumMemory = self.own.memories[0]
+        self.net: QuantumNetwork = self.own.network
 
     def RecvQubitHandler(self, node: VLAwareQNode, event: RecvQubitPacket):
         if not isinstance(event.qubit, self.entanglement_type): 

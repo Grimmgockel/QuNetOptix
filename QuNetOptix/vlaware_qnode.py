@@ -10,6 +10,7 @@ QNode with knowledge over vlink requests
 class VLAwareQNode(QNode):
     def __init__(self, name: str = None, apps: List[Application] = None):
         super().__init__(name, apps)
+        self.has_vlink = False
         self.vlinks: List[Request] = []
 
     def add_vlink(self, vlink: Request):

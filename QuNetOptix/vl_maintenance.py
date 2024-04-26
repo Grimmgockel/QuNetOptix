@@ -28,24 +28,21 @@ class VLMaintenanceApp(VLApp):
         self.classic_msg_type: str = 'vlink'
         self.entanglement_type: Type[QuantumModel] = BellStateEntanglement # TODO custom entanglement model for no ambiguity
         self.app_name: str = 'vlink maintenance'
-        self.has_vlink: bool = False
+
+        # vlink info
         self.vlink_src: Optional[VLAwareQNode] = None
         self.vlink_dst: Optional[VLAwareQNode] = None
-
 
     def install(self, node: QNode, simulator: Simulator):
         super().install(node, simulator)
 
-        self.own: VLAwareQNode = self._node
-        self.memory: QuantumMemory = self.own.memories[0]
-        self.net: QuantumNetwork = self.own.network
-
         if self.own.vlinks:
+            self.own.has_vlink = True
             vlink_request: Request = self.own.vlinks[0] 
             self.vlink_src = vlink_request.src if self.own == vlink_request.dest else None
             self.vlink_dst = vlink_request.dest if self.own == vlink_request.src else None
 
-        if self.vlink_dst is not None: # node is sender
+        if self.vlink_dst is not None: # node is sender of vlink
             t = simulator.ts
             event = func_to_event(t, self.start_vlink_distribution, by=self)
             self._simulator.add_event(event)
