@@ -19,7 +19,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-from vls import VLNetwork
+from vl_network import VLNetwork
 from oracle import NetworkOracle
 from config import Config
 from config import Job
@@ -27,6 +27,7 @@ import base_routing
 
 
 
+# TODO make maintenance and routing app into strategy pattern to just implement the other stuff 
 # TODO ROUTING
 # have virtual links as requests in the net (entanglement that doesn't decohere?)
 # each node has its next virtual link next to it, this is taken into account for routing 

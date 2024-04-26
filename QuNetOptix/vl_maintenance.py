@@ -1,182 +1,21 @@
-from qns.network.network import QuantumNetwork
-from qns.models.epr import BellStateEntanglement
-from qns.network.protocol import EntanglementDistributionApp
-from qns.network.protocol.entanglement_distribution import Transmit
-from qns.simulator.ts import Time
-from qns.entity.node import QNode
-from qns.network.topology import Topology 
-from qns.models.epr.werner import WernerStateEntanglement
-from qns.network.route import RouteImpl 
-from qns.network.topology.topo import ClassicTopology 
-from qns.entity.memory import QuantumMemory
-from qns.simulator.simulator import Simulator
-from qns.entity.entity import Entity
-from qns.simulator.event import Event, func_to_event
-from qns.network.requests import Request
-from qns.entity.node.app import Application
 from qns.models.core import QuantumModel
-from qns.entity.qchannel.qchannel import QuantumChannel, RecvQubitPacket
-from qns.entity.cchannel.cchannel import ClassicChannel, ClassicPacket, RecvClassicPacket
-from qns.network.topology import Topology, TreeTopology
-from typing import Optional, Dict, List, Tuple, Union, Callable, Type, Any
-from abc import ABC, abstractmethod
+from qns.models.epr import BellStateEntanglement
+from qns.entity.node import QNode
+from qns.simulator.simulator import Simulator
+from qns.entity.memory import QuantumMemory
+from qns.network.network import QuantumNetwork
+from qns.network.requests import Request
+from qns.entity.cchannel import ClassicChannel, RecvClassicPacket, ClassicPacket
+from qns.entity.qchannel import QuantumChannel, RecvQubitPacket
+from qns.simulator.event import func_to_event
 import qns.utils.log as log
-from dataclasses import dataclass
-import os
+
+from vlaware_qnode import VLAwareQNode
+from transmit import Transmit
+from vl_app import VLApp
+
+from typing import Optional, Type
 import uuid
-
-@dataclass
-class Transmit:
-    id: str
-    src: QNode
-    dst: QNode
-    first_epr_name: Optional[str] = None
-    second_epr_name: Optional[str] = None
-    start_time_s: Optional[float] = None
-    vl: bool = False
-
-'''
-QNode with knowledge over vlink requests
-'''
-class VLAwareQNode(QNode):
-    def __init__(self, name: str = None, apps: List[Application] = None):
-        super().__init__(name, apps)
-        self.vlinks: List[Request] = []
-
-    def add_vlink(self, vlink: Request):
-        self.vlinks.append(vlink)
-
-'''
-Quantum network containing special request types called superlinks, that are considered for routing as entanglement links
-'''
-class VLNetwork(QuantumNetwork):
-    def __init__(self, topo: Topology | None = None, route: RouteImpl | None = None, classic_topo: ClassicTopology | None = ClassicTopology.Empty, name: str | None = None):
-        super().__init__(topo, route, classic_topo, name)
-
-        # TODO SLS
-        # TODO at this point the network graph is built, based on the graph requests for virtual links need to be produced
-        # TODO one superlink per node, look at random_requests in QuantumNetwork
-        self.vlinks: List[Request] = []
-        self.add_vlink(src=self.get_node('n2'), dest=self.get_node('n9'))
-
-    def add_vlink(self, src: VLAwareQNode, dest: VLAwareQNode, attr: Dict = {}):
-        vlink = Request(src=src, dest=dest, attr=attr)
-        self.vlinks.append(vlink)
-        src.add_vlink(vlink)
-        dest.add_vlink(vlink)
-
-'''
-Abstract class for node protocol in virtual link network
-'''
-class VLApp(ABC, Application):
-    def __init__(self):
-        super().__init__()
-
-        # members
-        self.control: Dict[str, Callable[..., Any]] = {
-            "swap": self._swap,
-            "next": self._next,
-            "success": self._success,
-            "revoke": self._revoke,
-            "restore": self._restore
-        }
-        self.entanglement_type: Type[QuantumModel] = None
-        self.classic_msg_type: str = None
-        self.app_name: str = None
-        self.own: VLAwareQNode = None 
-        self.memory: QuantumMemory = None 
-        self.net: QuantumNetwork = None 
-        self.state: Dict[str, Transmit] = {}
-
-        # communication
-        self.add_handler(self.RecvQubitHandler, [RecvQubitPacket])
-        self.add_handler(self.RecvClassicPacketHandler, [RecvClassicPacket])
-
-        # meta data
-        self.success_eprs = []
-        self.success_count = 0
-        self.send_count = 0
-
-    def RecvQubitHandler(self, node: VLAwareQNode, event: RecvQubitPacket):
-        if not isinstance(event.qubit, self.entanglement_type): 
-            return
-        self.receive_qubit(node, event)
-
-    def RecvClassicPacketHandler(self, node: VLAwareQNode, event: RecvClassicPacket):
-        msg = event.packet.get()
-        if not msg['type'] == self.classic_msg_type:
-            return
-        self.receive_classic(node, event)
-
-    @abstractmethod
-    def receive_qubit(node: VLAwareQNode, event: RecvQubitPacket):
-        pass
-
-    @abstractmethod
-    def receive_classic(node: VLAwareQNode, event: RecvClassicPacket):
-        pass
-
-    @abstractmethod
-    def _swap(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        pass
-
-    @abstractmethod
-    def _next(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        pass
-
-    @abstractmethod
-    def _success(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        pass
-
-    @abstractmethod
-    def _revoke(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        pass
-
-    @abstractmethod
-    def _restore(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        pass
-
-    '''
-    Generate qubit according to applications quantum model
-    '''
-    def generate_qubit(self, src: VLAwareQNode, dst: VLAwareQNode,
-                       transmit_id: Optional[str] = None) -> QuantumModel:
-        epr = self.entanglement_type(name=uuid.uuid4().hex)
-        epr.src = src
-        epr.dst = dst
-        epr.transmit_id = transmit_id if transmit_id is not None else uuid.uuid4().hex
-        return epr
-
-    '''
-    Remote access
-    '''
-    def query_transmit(self, id: int):
-        return self.state[id]
-
-    '''
-    Remote access
-    '''
-    def set_first_epr(self, epr: QuantumModel, transmit_id: str):
-        transmit = self.state.get(transmit_id, None)
-        if transmit is None or transmit.first_epr_name is None:
-            return
-        self.memory.read(transmit.first_epr_name)
-        self.memory.write(epr)
-        transmit.first_epr_name = epr.name
-
-    '''
-    Remote access
-    '''
-    def set_second_epr(self, epr: QuantumModel, transmit_id: str):
-        transmit = self.state.get(transmit_id, None)
-        if transmit is None or transmit.second_epr_name is None:
-            return
-        self.memory.read(transmit.second_epr_name)
-        self.memory.write(epr)
-        transmit.second_epr_name = epr.name
-
-    def __repr__(self) -> str:
-        return f'[{self.own.name}]\t<{self.app_name}>\t'
 
 '''
 Node application for maintaining selected virtual links 
@@ -190,8 +29,8 @@ class VLMaintenanceApp(VLApp):
         self.entanglement_type: Type[QuantumModel] = BellStateEntanglement # TODO custom entanglement model for no ambiguity
         self.app_name: str = 'vlink maintenance'
         self.has_vlink: bool = False
-        self.vlink_src: Optional[QNode] = None
-        self.vlink_dst: Optional[QNode] = None
+        self.vlink_src: Optional[VLAwareQNode] = None
+        self.vlink_dst: Optional[VLAwareQNode] = None
 
 
     def install(self, node: QNode, simulator: Simulator):
@@ -259,7 +98,7 @@ class VLMaintenanceApp(VLApp):
         log.debug(f'{self}: sending qubit {epr} to {next_hop.name}')
         qchannel.send(epr, next_hop)
 
-    def receive_qubit(self, n: VLAwareQNode, e: Event):
+    def receive_qubit(self, n: VLAwareQNode, e: RecvQubitPacket):
         # get sender channel and node 
         src_qchannel: QuantumChannel = e.qchannel
         src_node: VLAwareQNode = src_qchannel.node_list[0] if src_qchannel.node_list[1] == self.own else src_qchannel.node_list[1]
@@ -309,7 +148,7 @@ class VLMaintenanceApp(VLApp):
         cchannel.send(classic_packet, next_hop=src_node)
 
 
-    def receive_classic(self, n: QNode, e: Event):
+    def receive_classic(self, n: QNode, e: RecvClassicPacket):
         # get sender and channel
         src_cchannel: ClassicChannel = e.by
         src_node: VLAwareQNode = src_cchannel.node_list[0] if src_cchannel.node_list[1] == self.own else src_cchannel.node_list[1]
@@ -434,64 +273,3 @@ class VLMaintenanceApp(VLApp):
         self.state[transmit.id] = None
 
         self.start_vlink_distribution()
-
-
-class VLEnabledRouteAlgorithm(RouteImpl):
-    # TODO determine how vlinks should be treated 
-    # - EITHER: every node knows its closest vlink (start at lvl2 graph and work down, internet adressing paper)
-    # - OR: simple dijkstra on lvl1 graph
-    pass
-
-'''
-Node application for entanglement distribution over physical and virtual links
-'''
-class VLEnabledDistributionApp(VLApp):
-    def install(self, node: QNode, simulator: Simulator):
-        super().install(node, simulator)
-
-        # members
-        self.classic_msg_type: str = 'standard'
-        self.entanglement_type: Type[QuantumModel] = WernerStateEntanglement # TODO custom entanglement model for no ambiguity
-        self.app_name: str = "vlink enabled routing"
-
-        self.own = self._node
-
-    def receive_qubit(self, node: VLAwareQNode, event: RecvClassicPacket):
-        pass
-
-    def receive_classic(self, node: VLAwareQNode, event: RecvClassicPacket):
-        log.debug(f'{self}: received something !!!')
-
-    def _swap(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        return
-
-    def _next(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        return
-
-    def _success(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        return
-
-    def _revoke(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        return
-
-    def _restore(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        return
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
