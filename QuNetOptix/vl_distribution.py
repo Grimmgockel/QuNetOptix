@@ -23,6 +23,7 @@ class VLEnabledDistributionApp(VLApp):
 
     def send_qubit(self, qchannel: QuantumChannel, epr, next_hop):
         # TODO send over vlink 
+        log.debug(f'{self}: send qubit {epr} to {next_hop.name}')
         pass
 
     def receive_qubit(self, node: VLAwareQNode, event: RecvClassicPacket):
