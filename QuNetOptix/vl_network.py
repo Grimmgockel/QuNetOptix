@@ -4,6 +4,7 @@ from qns.network.network import ClassicTopology
 from qns.network.route import RouteImpl
 from qns.network.requests import Request
 from vlaware_qnode import VLAwareQNode
+from vl_routing import VLEnabledRouteAlgorithm
 from typing import Dict, List
 
 
@@ -11,8 +12,8 @@ from typing import Dict, List
 Quantum network containing special request types called superlinks, that are considered for routing as entanglement links
 '''
 class VLNetwork(QuantumNetwork):
-    def __init__(self, topo: Topology | None = None, route: RouteImpl | None = None, classic_topo: ClassicTopology | None = ClassicTopology.Empty, name: str | None = None):
-        super().__init__(topo, route, classic_topo, name)
+    def __init__(self, topo: Topology | None = None):
+        super().__init__(topo, VLEnabledRouteAlgorithm(), ClassicTopology.All, 'vl network')
 
         # TODO SLS
         # TODO at this point the network graph is built, based on the graph requests for virtual links need to be produced

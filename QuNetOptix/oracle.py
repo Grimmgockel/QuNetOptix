@@ -31,7 +31,7 @@ class NetworkOracle():
         log.install(self._sim)
 
         # Network
-        self._net = VLNetwork(topo=config.topo, classic_topo=ClassicTopology.All)
+        self._net = VLNetwork(topo=config.topo)
         self._net.build_route()
         if config.job.sessions is None:
             self._net.random_requests(number=config.job.session_count, attr={'send_rate': config.send_rate})
