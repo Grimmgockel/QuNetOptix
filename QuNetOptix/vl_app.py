@@ -1,4 +1,5 @@
 from qns.network.network import QuantumNetwork
+from qns.entity.qchannel import QuantumChannel
 from qns.network.protocol.entanglement_distribution import Transmit
 from qns.entity.memory import QuantumMemory
 from qns.network.requests import Request
@@ -109,37 +110,27 @@ class VLApp(ABC, Application):
         self.send_count += 1
         self.distribute_qubit_adjacent(epr.transmit_id)
 
-    @abstractmethod
     def distribute_qubit_adjacent(self, transmit_id: str):
-        pass
+        transmit = self.trans_registry.get(transmit_id)
+        if transmit is None:
+            raise Exception("does this occur?")
+            #return
+        epr = self.memory.get(transmit.second_epr_name)
+        if epr is None: 
+            raise Exception("does this occur?")
+            #return
 
-    @abstractmethod
-    def receive_qubit(node: VLAwareQNode, event: RecvQubitPacket):
-        pass
+        try:
+            [(_, next_hop, _)] = self.net.query_route(self.own, transmit.dst)
+        except IndexError:
+            raise Exception(f"{self}: Route error.")
 
-    @abstractmethod
-    def receive_classic(node: VLAwareQNode, event: RecvClassicPacket):
-        pass
+        qchannel: QuantumChannel = self.own.get_qchannel(next_hop)
+        if qchannel is None:
+            raise Exception(f"{self}: No such quantum channel.")
 
-    @abstractmethod
-    def _swap(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        pass
-
-    @abstractmethod
-    def _next(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        pass
-
-    @abstractmethod
-    def _success(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        pass
-
-    @abstractmethod
-    def _revoke(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        pass
-
-    @abstractmethod
-    def _restore(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        pass
+        # send entanglement
+        self.send_qubit(qchannel, epr, next_hop)
 
     '''
     Send classical control message
@@ -191,6 +182,38 @@ class VLApp(ABC, Application):
         self.memory.read(transmit.second_epr_name)
         self.memory.write(epr)
         transmit.second_epr_name = epr.name
+
+    @abstractmethod
+    def send_qubit(self, qchannel: QuantumChannel, epr, next_hop):
+        pass
+
+    @abstractmethod
+    def receive_qubit(self, node: VLAwareQNode, event: RecvQubitPacket):
+        pass
+
+    @abstractmethod
+    def receive_classic(self, node: VLAwareQNode, event: RecvClassicPacket):
+        pass
+
+    @abstractmethod
+    def _swap(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
+        pass
+
+    @abstractmethod
+    def _next(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
+        pass
+
+    @abstractmethod
+    def _success(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
+        pass
+
+    @abstractmethod
+    def _revoke(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
+        pass
+
+    @abstractmethod
+    def _restore(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
+        pass
 
     def __repr__(self) -> str:
         return f'[{self.own.name}]\t<{self.app_name}>\t'

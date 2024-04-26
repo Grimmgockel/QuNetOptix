@@ -40,24 +40,9 @@ class VLEnabledDistributionApp(VLApp):
         self.entanglement_type: Type[QuantumModel] = WernerStateEntanglement # TODO custom entanglement model for no ambiguity
         self.app_name: str = 'vlink enabled routing'
 
-    def distribute_qubit_adjacent(self, transmit_id: str):
-        transmit = self.trans_registry.get(transmit_id)
-        if transmit is None:
-            raise Exception('does this occur?')
-            #return
-
-        epr = self.memory.get(transmit.second_epr_name)
-        if epr is None:
-            raise Exception('does this occur?')
-            # return
-
-        #try:
-            #[(_, next_hop, _)] = self.net.query_route(self.own, transmit.src)
-        #except IndexError:
-            #raise Exception(f'{self}: Route error.')
-
-        # TODO send over virtual link or qchannel
-
+    def send_qubit(self, qchannel: QuantumChannel, epr, next_hop):
+        # TODO send over vlink 
+        pass
 
     def receive_qubit(self, node: VLAwareQNode, event: RecvClassicPacket):
         pass
