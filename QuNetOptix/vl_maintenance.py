@@ -25,7 +25,6 @@ class VLMaintenanceApp(VLApp):
         super().__init__()
 
         # members
-        self.classic_msg_type: str = 'vlink'
         self.entanglement_type: Type[QuantumModel] = BellStateEntanglement # TODO custom entanglement model for no ambiguity
         self.app_name: str = 'vlink maintenance'
 
@@ -82,23 +81,11 @@ class VLMaintenanceApp(VLApp):
             # revoke distribution
             self.memory.read(epr)
             self.memory.read(next_epr)
-            classic_packet = ClassicPacket(
-                msg={"cmd": "revoke", "transmid_id": epr.transmit_id, 'type': 'vlink'},
-                src=self.own,
-                dest=src_node
-            ),
-            log.debug(f'{self}: storage failed; sending {classic_packet.msg} to {src_node.name}; destroyed {epr} and {next_epr}')
-            cchannel.send(classic_packet, next_hop=src_node)
+            self.send_control(cchannel, src_node, epr.transmit_id, 'revoke')
             return
 
-        # storage successful
-        classic_packet = ClassicPacket(
-            msg={"cmd": 'swap', "transmit_id": epr.transmit_id, 'type': 'vlink'}, 
-            src=self.own, 
-            dest=src_node
-        )
-        log.debug(f'{self}: sending {classic_packet.msg} to {src_node.name}')
-        cchannel.send(classic_packet, next_hop=src_node)
+        # if storage successful
+        self.send_control(cchannel, src_node, epr.transmit_id, 'swap')
 
 
     def receive_classic(self, n: QNode, e: RecvClassicPacket):
@@ -137,13 +124,7 @@ class VLMaintenanceApp(VLApp):
             log.debug(f'{self}: performed swap (({alice.name}, {self.own.name}) - ({self.own.name}, {charlie.name})) -> ({alice.name}, {charlie.name})')
 
         # send next
-        classic_packet = ClassicPacket(
-            msg={"cmd": "next", "transmit_id": transmit.id, 'type': 'vlink'}, 
-            src=self.own, 
-            dest=src_node,
-        )
-        log.debug(f'{self}: sending {classic_packet.msg} to {src_node.name}')
-        src_cchannel.send(classic_packet, next_hop=src_node)
+        self.send_control(src_cchannel, src_node, transmit.id, 'next')
 
     def _next(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         if self.own == transmit.dst: # successful distribution
@@ -158,14 +139,8 @@ class VLMaintenanceApp(VLApp):
             #assert(result_epr == src_epr)
 
             # send 'success' control to source node
-            classic_packet = ClassicPacket(
-                msg={'cmd': 'success', 'transmit_id': transmit.id, 'type': 'vlink'},
-                src=self.own,
-                dest=transmit.src
-            )
             cchannel: Optional[ClassicChannel] = self.own.get_cchannel(transmit.src) # TODO implemented for fully meshed classical network
-            log.debug(f'{self}: sending {classic_packet.msg} to {transmit.src.name}')
-            cchannel.send(classic_packet, next_hop=transmit.src)
+            self.send_control(cchannel, transmit.src, transmit.id, 'success')
 
             # TODO just testing restore  
             #self.state[transmit.id] = None
@@ -212,14 +187,8 @@ class VLMaintenanceApp(VLApp):
         self.memory.read(transmit.second_epr_name)
         self.trans_registry[transmit.id] = None
         if self.own != None: # recurse back to source node
-            classic_packet = ClassicPacket(
-                msg={'cmd': 'revoke', "transmit_id": transmit.id, 'type': 'vlink'},
-                src=self.own,
-                dest=transmit.src
-            )
             cchannel = self.own.get_cchannel(transmit.src)
-            log.debug(f'{self}: sending {classic_packet.msg} to {transmit.src.name}')
-            cchannel.send(classic_packet, next_hop=transmit.src)
+            self.send_control(cchannel, transmit.src, transmit.id, 'revoke')
 
     def _restore(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         self.memory.read(self.trans_registry[transmit.id].second_epr_name)

@@ -37,7 +37,6 @@ class VLEnabledDistributionApp(VLApp):
         super().__init__()
 
         # members
-        self.classic_msg_type: str = 'standard'
         self.entanglement_type: Type[QuantumModel] = WernerStateEntanglement # TODO custom entanglement model for no ambiguity
         self.app_name: str = 'vlink enabled routing'
 
@@ -52,10 +51,10 @@ class VLEnabledDistributionApp(VLApp):
             raise Exception('does this occur?')
             # return
 
-        try:
-            [(_, next_hop, _)] = self.net.query_route(self.own, transmit.src)
-        except IndexError:
-            raise Exception(f'{self}: Route error.')
+        #try:
+            #[(_, next_hop, _)] = self.net.query_route(self.own, transmit.src)
+        #except IndexError:
+            #raise Exception(f'{self}: Route error.')
 
         # TODO send over virtual link or qchannel
 

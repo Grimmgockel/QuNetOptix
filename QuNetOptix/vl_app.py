@@ -5,7 +5,7 @@ from qns.network.requests import Request
 from qns.entity.node.app import Application
 from qns.models.core import QuantumModel
 from qns.entity.qchannel.qchannel import RecvQubitPacket
-from qns.entity.cchannel.cchannel import ClassicChannel, RecvClassicPacket
+from qns.entity.cchannel.cchannel import ClassicChannel, RecvClassicPacket, ClassicPacket
 from qns.entity.node import QNode
 from qns.simulator.simulator import Simulator
 from qns.simulator.event import func_to_event
@@ -34,7 +34,6 @@ class VLApp(ABC, Application):
             "restore": self._restore
         }
         self.entanglement_type: Type[QuantumModel] = None
-        self.classic_msg_type: str = None
         self.app_name: str = None
         self.own: VLAwareQNode = None 
         self.memory: QuantumMemory = None 
@@ -80,9 +79,10 @@ class VLApp(ABC, Application):
 
     def RecvClassicPacketHandler(self, node: VLAwareQNode, event: RecvClassicPacket):
         msg = event.packet.get()
-        if not msg['type'] == self.classic_msg_type:
+        if msg['app_name'] != self.app_name:
             return
         self.receive_classic(node, event)
+
 
     '''
     Initiate EP distribution distributed algorithm as a sender node
@@ -140,6 +140,18 @@ class VLApp(ABC, Application):
     @abstractmethod
     def _restore(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         pass
+
+    '''
+    Send classical control message
+    '''
+    def send_control(self, cchannel: ClassicChannel, dst: VLAwareQNode, transmit_id: str, control: str):
+        classic_packet = ClassicPacket(
+            msg={"cmd": control, "transmit_id": transmit_id, 'app_name': self.app_name}, 
+            src=self.own, 
+            dest=dst
+        )
+        log.debug(f'{self}: sending {classic_packet.msg} to {dst.name}')
+        cchannel.send(classic_packet, next_hop=dst)
 
     '''
     Generate qubit according to applications quantum model
