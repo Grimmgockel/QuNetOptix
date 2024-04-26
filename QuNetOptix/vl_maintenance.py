@@ -29,19 +29,6 @@ class VLMaintenanceApp(VLApp):
         self.entanglement_type: Type[QuantumModel] = BellStateEntanglement # TODO custom entanglement model for no ambiguity
         self.app_name: str = 'vlink maintenance'
 
-
-    def install(self, node: QNode, simulator: Simulator):
-        super().install(node, simulator)
-
-        if self.own.vlinks:
-            self.own.has_vlink = True
-            request: Request = self.own.vlinks[0] 
-            self.src = request.src if self.own == request.dest else None
-            self.dst = request.dest if self.own == request.src else None
-        self.launch(simulator)
-
-
-
     def distribute_qubit_adjacent(self, transmit_id: str):
         transmit = self.trans_registry.get(transmit_id)
         #if transmit is None:

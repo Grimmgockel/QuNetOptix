@@ -40,15 +40,6 @@ class VLEnabledDistributionApp(VLApp):
         self.entanglement_type: Type[QuantumModel] = WernerStateEntanglement # TODO custom entanglement model for no ambiguity
         self.app_name: str = "vlink enabled routing"
 
-    def install(self, node: QNode, simulator: Simulator):
-        super().install(node, simulator)
-
-        if self.own.requests:
-            request: Request = self.own.requests[0] # allow for one request per node
-            self.src = request.src if self.own == request.dest else None
-            self.dst = request.dest if self.own == request.src else None
-        self.launch(simulator)
-    
     def distribute_qubit_adjacent(self, transmit_id: str):
         pass
 
@@ -56,7 +47,7 @@ class VLEnabledDistributionApp(VLApp):
         pass
 
     def receive_classic(self, node: VLAwareQNode, event: RecvClassicPacket):
-        log.debug(f'{self}: received something !!!')
+        pass
 
     def _swap(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         return

@@ -61,7 +61,13 @@ class VLApp(ABC, Application):
         self.memory: QuantumMemory = self.own.memories[0]
         self.net: QuantumNetwork = self.own.network
 
-    def launch(self, simulator: Simulator):
+        try:
+            request: Request = self.own.vlinks[0] if self.app_name == 'vlink maintenance' else self.own.requests[0]
+            self.src = request.src if self.own == request.dest else None
+            self.dst = request.dest if self.own == request.src else None
+        except IndexError:
+            pass
+
         if self.dst is not None: # sender
             t = simulator.ts
             event = func_to_event(t, self.start_ep_distribution, by=self)
