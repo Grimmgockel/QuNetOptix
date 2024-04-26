@@ -41,30 +41,6 @@ class VLMaintenanceApp(VLApp):
         self.launch(simulator)
 
 
-    '''
-    Initiate EP distribution distributed algorithm as a sender node
-    '''
-    def start_ep_distribution(self):
-        epr = self.generate_qubit(self.own, self.dst, None)
-
-        # save transmission
-        transmit = Transmit(
-            id=epr.transmit_id,
-            src=self.own,
-            dst=self.dst,
-            second_epr_name=epr.name,
-            start_time_s=self._simulator.current_time.sec
-        )
-        self.trans_registry[epr.transmit_id] = transmit
-
-        store_success = self.memory.write(epr)
-        if not store_success:
-            self.memory.read(epr)
-            self.trans_registry[epr.transmit_id] = None
-
-        log.debug(f'{self}: start new vlink distribution: {transmit}')
-        self.send_count += 1
-        self.distribute_qubit_adjacent(epr.transmit_id)
 
     def distribute_qubit_adjacent(self, transmit_id: str):
         transmit = self.trans_registry.get(transmit_id)
