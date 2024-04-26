@@ -31,15 +31,16 @@ class VLMaintenanceApp(VLApp):
 
     def distribute_qubit_adjacent(self, transmit_id: str):
         transmit = self.trans_registry.get(transmit_id)
-        #if transmit is None:
+        if transmit is None:
+            raise Exception("does this occur?")
             #return
         epr = self.memory.get(transmit.second_epr_name)
-        #if epr is None: 
+        if epr is None: 
+            raise Exception("does this occur?")
             #return
-        dst = transmit.dst
-        route_result = self.net.query_route(self.own, dst)
+
         try:
-            next_hop: VLAwareQNode = route_result[0][1]
+            [(_, next_hop, _)] = self.net.query_route(self.own, transmit.dst)
         except IndexError:
             raise Exception(f"{self}: Route error.")
 
