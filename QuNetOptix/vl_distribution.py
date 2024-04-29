@@ -7,6 +7,7 @@ import qns.utils.log as log
 from vlaware_qnode import VLAwareQNode
 from transmit import Transmit
 from vl_app import VLApp
+from vl_routing import RoutingResult
 
 from typing import Type
 
@@ -21,10 +22,10 @@ class VLEnabledDistributionApp(VLApp):
         self.entanglement_type: Type[QuantumModel] = WernerStateEntanglement # TODO custom entanglement model for no ambiguity
         self.app_name: str = 'vlink enabled routing'
 
-    def send_qubit(self, qchannel: QuantumChannel, epr, next_hop):
+    def send_qubit(self, epr, routing_result: RoutingResult):
         # TODO send over vlink 
+        next_hop = routing_result.next_hop_virtual
         log.debug(f'{self}: send qubit {epr} to {next_hop.name}')
-        pass
 
     def receive_qubit(self, node: VLAwareQNode, event: RecvClassicPacket):
         pass

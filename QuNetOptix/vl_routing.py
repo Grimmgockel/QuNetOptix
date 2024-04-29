@@ -3,30 +3,35 @@ from qns.entity.cchannel import ClassicChannel
 from qns.entity.qchannel import QuantumChannel
 
 from vlaware_qnode import VLAwareQNode
+from vl_net_graph import VLNetGraph
 
 from typing import Callable, Union, List, Tuple, Dict
-import networkx as nx
-import matplotlib.pyplot as plt
 from dataclasses import dataclass
 
 @dataclass
 class RoutingResult:
-    metric: float
-    path: List[VLAwareQNode]
-    next_hop: VLAwareQNode
+    metric_physical: int
+    metric_virtual: int
+    path_physical: List[VLAwareQNode]
+    path_virtual: List[VLAwareQNode]
+    next_hop_physical: VLAwareQNode
+    next_hop_virtual: VLAwareQNode
     vlink: bool
 
 @dataclass
 class RoutingTableEntry:
-    metric: int
-    vl_path: List[Tuple[VLAwareQNode, str]]
+    metric_virtual: int
+    path_virtual: List[Tuple[VLAwareQNode, str]]
+    metric_physical: int
+    path_physical: List[VLAwareQNode]
 
 class VLEnabledRouteAlgorithm(RouteImpl):
-    def __init__(self, graph: nx.Graph, metric_func: Callable[[Union[QuantumChannel, ClassicChannel]], float] = None) -> None:
+    def __init__(self, physical_graph: VLNetGraph, vlink_graph: VLNetGraph, metric_func: Callable[[Union[QuantumChannel, ClassicChannel]], float] = None) -> None:
         super().__init__('vl_dijkstra')
 
         # members
-        self.graph = graph
+        self.physical_graph = physical_graph
+        self.vlink_graph = vlink_graph
         self.route_table = {}
         self.metric_func = lambda _: 1 if metric_func is None else self.metric_func
 
@@ -34,35 +39,48 @@ class VLEnabledRouteAlgorithm(RouteImpl):
         for source in nodes:
             self.route_table[source] = {}
             for target in nodes:
-                shortest_path = nx.shortest_path(self.graph, source=source, target=target)
-                shortest_path_length = nx.shortest_path_length(self.graph, source=source, target=target)
-                path_edges = [(shortest_path[i], shortest_path[i+1]) for i in range(len(shortest_path)-1)]
-                edge_types = [self.graph.get_edge_data(u, v)['type'] for u, v in path_edges]
+
+                # build lvl0 path - physical
+                shortest_path_physical = self.physical_graph.shortest_path(source, target)
+                shortest_path_physical_length = self.physical_graph.shortest_path_length(source, target)
+
+                # build lvl1 path - entanglement enabled
+                shortest_path_vlink = self.vlink_graph.shortest_path(source, target)
+                shortest_path_vlink_length = self.vlink_graph.shortest_path_length(source, target)
+
                 entry = RoutingTableEntry(
-                    metric=shortest_path_length,
-                    vl_path=list(zip(path_edges, edge_types))
+                    metric_virtual=shortest_path_vlink_length,
+                    path_virtual=shortest_path_vlink,
+                    metric_physical=shortest_path_physical_length,
+                    path_physical=shortest_path_physical
                 )
                 self.route_table[source][target] = entry
 
-
-    def query(self, src: VLAwareQNode, dest: VLAwareQNode) -> RoutingResult:
+    def query(self, src: VLAwareQNode, dest: VLAwareQNode) -> RoutingTableEntry:
         src_route_table = self.route_table.get(src, None)
         if src_route_table is None: 
             return []
         entry: RoutingTableEntry = src_route_table.get(dest, None)
         if entry is None:
             return []
+
         try:
-            metric = entry.metric
-            path = [hop[0] for hop in entry.vl_path]
-            next_hop = entry.vl_path[0][0][1]
-            vlink=True if entry.vl_path[0][1] == 'entanglement' else False
+            metric_physical: int = entry.metric_physical
+            metric_virtual: int = entry.metric_virtual
+            path_physical: List[VLAwareQNode] = [hop[0][1] for hop in entry.path_physical]
+            path_virtual: List[VLAwareQNode] = [hop[0][1] for hop in entry.path_virtual]
+            next_hop_physical: VLAwareQNode = path_physical[0]
+            next_hop_virtual: VLAwareQNode = path_virtual[0]
+            vlink = next_hop_virtual != next_hop_physical
 
             result = RoutingResult(
-                metric=metric,
-                path=path,
-                next_hop=next_hop,
-                vlink=vlink,
+                metric_physical=metric_physical,
+                metric_virtual=metric_virtual,
+                path_physical=path_physical,
+                path_virtual=path_virtual,
+                next_hop_physical=next_hop_physical,
+                next_hop_virtual=next_hop_virtual,
+                vlink=vlink
             )
 
             return result

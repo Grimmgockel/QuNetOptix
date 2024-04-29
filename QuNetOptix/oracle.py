@@ -90,7 +90,6 @@ class NetworkOracle():
     '''
     Vizualize network level as dot file (https://arxiv.org/abs/2306.05982)
     TODO plot with networkx
-    '''
     def generate_dot_file(self, filename: str, lvl=0):
         if lvl not in range(3):
             print("Invalid plot level")
@@ -132,5 +131,6 @@ class NetworkOracle():
                         f.write(f'{src.name}--{dest.name} [color=red penwidth=1 constraint=False];\n')
 
             f.write('}')
+    '''
 
 

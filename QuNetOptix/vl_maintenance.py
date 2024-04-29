@@ -13,6 +13,7 @@ import qns.utils.log as log
 from vlaware_qnode import VLAwareQNode
 from transmit import Transmit
 from vl_app import VLApp
+from vl_routing import RoutingResult
 
 from typing import Optional, Type
 import uuid
@@ -28,8 +29,12 @@ class VLMaintenanceApp(VLApp):
         self.entanglement_type: Type[QuantumModel] = BellStateEntanglement # TODO custom entanglement model for no ambiguity
         self.app_name: str = 'vlink maintenance'
 
-    def send_qubit(self, qchannel: QuantumChannel, epr, next_hop):
-        log.debug(f'{self}: sending qubit {epr} to {next_hop.name}')
+    def send_qubit(self, epr, routing_result: RoutingResult):
+        next_hop: VLAwareQNode = routing_result.next_hop_physical
+        log.debug(f'{self}: physical transmission of qubit {epr} to {next_hop}')
+        qchannel: QuantumChannel = self.own.get_qchannel(next_hop)
+        if qchannel is None:
+            raise Exception(f"{self}: No such quantum channel.")
         qchannel.send(epr, next_hop=next_hop)
 
     def receive_qubit(self, n: VLAwareQNode, e: RecvQubitPacket):

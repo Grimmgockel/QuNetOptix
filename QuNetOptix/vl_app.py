@@ -124,15 +124,7 @@ class VLApp(ABC, Application):
         routing_result: RoutingResult = self.net.query_route(self.own, transmit.dst)
         if not routing_result:
             raise Exception(f"{self}: Route error.")
-
-
-        # TODO put this into subclass
-        qchannel: QuantumChannel = self.own.get_qchannel(routing_result.next_hop)
-        if qchannel is None:
-            raise Exception(f"{self}: No such quantum channel.")
-
-        # send entanglement
-        self.send_qubit(qchannel, epr, routing_result.next_hop)
+        self.send_qubit(epr, routing_result)
 
     '''
     Send classical control message

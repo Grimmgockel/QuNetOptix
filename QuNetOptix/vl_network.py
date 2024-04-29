@@ -1,15 +1,14 @@
 from qns.network import QuantumNetwork
 from qns.network.topology import Topology
 from qns.network.network import ClassicTopology
-from qns.network.route import RouteImpl, DijkstraRouteAlgorithm
 from qns.network.requests import Request
 from vlaware_qnode import VLAwareQNode
 from vl_routing import VLEnabledRouteAlgorithm
+from vl_net_graph import VLNetGraph
 from typing import Dict, List
 import networkx as nx
-
-
-
+import matplotlib.pyplot as plt
+    
 '''
 Quantum network containing special request types called superlinks, that are considered for routing as entanglement links
 '''
@@ -29,16 +28,12 @@ class VLNetwork(QuantumNetwork):
         self.vlinks: List[Request] = []
         self.add_vlink(src=self.get_node('n2'), dest=self.get_node('n9'))
 
-        # build network graph
-        self.graph = nx.Graph()
-        self.graph.add_nodes_from(self.nodes)
-        for qchannel in self.qchannels:
-            self.graph.add_edge(qchannel.node_list[0], qchannel.node_list[1], type='physical')
-        for vlink in self.vlinks:
-            self.graph.add_edge(vlink.src, vlink.dest, type='entanglement')
+        self.physical_graph = VLNetGraph(self.nodes, self.qchannels)
+        self.vlink_graph = VLNetGraph(self.nodes, self.qchannels, vlinks=self.vlinks, lvl=1)
 
         # set routing algorithm
-        self.route = VLEnabledRouteAlgorithm(self.graph)
+        self.route = VLEnabledRouteAlgorithm(self.physical_graph, self.vlink_graph)
+
 
     def add_vlink(self, src: VLAwareQNode, dest: VLAwareQNode, attr: Dict = {}):
         vlink = Request(src=src, dest=dest, attr=attr)

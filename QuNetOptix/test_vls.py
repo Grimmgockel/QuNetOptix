@@ -17,10 +17,5 @@ if __name__ == '__main__':
         job=Job.custom(sessions=[('n0', 'n11')])
     )
 
-    #print(config)
     oracle.run(config, loglvl=log.logging.DEBUG, monitor=False)
-    oracle.generate_dot_file("lvl0_net.dot", lvl=0)
-    oracle.generate_dot_file("lvl1_net.dot", lvl=1)
-    oracle.generate_dot_file("lvl2_net.dot", lvl=2)
-    
 
