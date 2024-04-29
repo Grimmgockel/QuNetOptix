@@ -23,21 +23,22 @@ class VLNetwork(QuantumNetwork):
         for n in self.nodes:
             n.add_network(self)
 
-        # build network graph
-        self.graph = nx.Graph()
-        self.graph.add_nodes_from(self.nodes)
-        for qchannel in self.qchannels:
-            self.graph.add_edge(qchannel.node_list[0], qchannel.node_list[1])
-
-        # set routing algorithm
-        # TODO
-        self.route = VLEnabledRouteAlgorithm(self.graph)
-
         # TODO SLS
         # TODO at this point the network graph is built, based on the graph requests for virtual links need to be produced
         # TODO one superlink per node, look at random_requests in QuantumNetwork
         self.vlinks: List[Request] = []
         self.add_vlink(src=self.get_node('n2'), dest=self.get_node('n9'))
+
+        # build network graph
+        self.graph = nx.Graph()
+        self.graph.add_nodes_from(self.nodes)
+        for qchannel in self.qchannels:
+            self.graph.add_edge(qchannel.node_list[0], qchannel.node_list[1], type='physical')
+        for vlink in self.vlinks:
+            self.graph.add_edge(vlink.src, vlink.dest, type='entanglement')
+
+        # set routing algorithm
+        self.route = VLEnabledRouteAlgorithm(self.graph)
 
     def add_vlink(self, src: VLAwareQNode, dest: VLAwareQNode, attr: Dict = {}):
         vlink = Request(src=src, dest=dest, attr=attr)

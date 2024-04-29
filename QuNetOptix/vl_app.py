@@ -14,6 +14,7 @@ import qns.utils.log as log
 
 from transmit import Transmit
 from vlaware_qnode import VLAwareQNode
+from vl_routing import RoutingResult
 
 from typing import Optional, Dict, Callable, Type, Any
 from abc import ABC, abstractmethod
@@ -120,17 +121,18 @@ class VLApp(ABC, Application):
             raise Exception("does this occur?")
             #return
 
-        try:
-            [(_, next_hop, _)] = self.net.query_route(self.own, transmit.dst)
-        except IndexError:
+        routing_result: RoutingResult = self.net.query_route(self.own, transmit.dst)
+        if not routing_result:
             raise Exception(f"{self}: Route error.")
 
-        qchannel: QuantumChannel = self.own.get_qchannel(next_hop)
+
+        # TODO put this into subclass
+        qchannel: QuantumChannel = self.own.get_qchannel(routing_result.next_hop)
         if qchannel is None:
             raise Exception(f"{self}: No such quantum channel.")
 
         # send entanglement
-        self.send_qubit(qchannel, epr, next_hop)
+        self.send_qubit(qchannel, epr, routing_result.next_hop)
 
     '''
     Send classical control message
