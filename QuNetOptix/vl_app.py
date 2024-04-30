@@ -10,6 +10,7 @@ from qns.entity.cchannel.cchannel import ClassicChannel, RecvClassicPacket, Clas
 from qns.entity.node import QNode
 from qns.simulator.simulator import Simulator
 from qns.simulator.event import func_to_event
+from qns.simulator.ts import Time
 import qns.utils.log as log
 
 from vlaware_qnode import VLAwareQNode, Transmit
@@ -18,6 +19,7 @@ from vl_routing import RoutingResult
 from typing import Optional, Dict, Callable, Type, Any
 from abc import ABC, abstractmethod
 import uuid
+
 
 '''
 Abstract class for node protocol in virtual link network
