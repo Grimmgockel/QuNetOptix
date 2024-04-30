@@ -1,12 +1,13 @@
 from qns.entity.cchannel import ClassicChannel, RecvClassicPacket
 from qns.entity.qchannel import QuantumChannel, RecvQubitPacket
 from qns.models.core import QuantumModel
-from qns.models.epr import WernerStateEntanglement
+from qns.models.epr import WernerStateEntanglement, BellStateEntanglement
 import qns.utils.log as log
 
 from vlaware_qnode import VLAwareQNode, Transmit
 from vl_app import VLApp
 from vl_routing import RoutingResult
+from vl_entanglement import StandardEntangledPair
 
 from typing import Type, Optional
 import uuid
@@ -20,7 +21,7 @@ class VLEnabledDistributionApp(VLApp):
         super().__init__()
 
         # members
-        self.entanglement_type: Type[QuantumModel] = WernerStateEntanglement # TODO custom entanglement model for no ambiguity
+        self.entanglement_type: Type[QuantumModel] = StandardEntangledPair # TODO custom entanglement model for no ambiguity
         self.app_name: str = 'vlink enabled routing'
 
     def send_qubit(self, epr, routing_result: RoutingResult, transmit_id: str):
@@ -93,9 +94,9 @@ class VLEnabledDistributionApp(VLApp):
     def _swap(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         # dont swap for first node
         if self.own != transmit.src:
-            first: WernerStateEntanglement = self.memory.read(transmit.first_epr_name)
-            second: WernerStateEntanglement = self.memory.read(transmit.second_epr_name)
-            new_epr: WernerStateEntanglement = first.swapping(second)
+            first: self.entanglement_type = self.memory.read(transmit.first_epr_name)
+            second: self.entanglement_type = self.memory.read(transmit.second_epr_name)
+            new_epr: self.entanglement_type = first.swapping(second)
             new_epr.name=uuid.uuid4().hex
 
             # set new EP in Alice (request src)
@@ -160,9 +161,28 @@ class VLEnabledDistributionApp(VLApp):
         log.debug(f'{self}: next transmit first {next_teleport.first_epr_name}')
         log.debug(f'{self}: next transmit second {next_teleport.second_epr_name}')
 
+        
+        first: self.entanglement_type = self.memory.read(next_teleport.first_epr_name)
+        second: self.entanglement_type = self.memory.read(vlink_transmit.second_epr_name)
+        new_epr: self.entanglement_type = first.swapping(second)
+        new_epr.name=uuid.uuid4().hex
+
+        # set new EP in Alice (request src)
+        print(next_teleport.src)
+        alice: VLAwareQNode = next_teleport.src
+        #alice_app: VLEnabledDistributionApp = alice.get_apps(VLEnabledDistributionApp)[0]
+        #alice_app.set_second_epr(new_epr, transmit_id=transmit.id)
+
+        # set new EP in Charlie (next in path)
+        #charlie = src_node
+        #charlie_app: VLEnabledDistributionApp = charlie.get_apps(VLEnabledDistributionApp)[0]
+        #charlie_app.set_first_epr(new_epr, transmit_id=transmit.id)
+
         # TODO next_teleport.second_epr is not up to date here ?
         # TODO swap next_teleport.first with vlink.second ?
         # TODO clear vlink transmit 
+
+        #self.own.trans_registry[vlink_transmit.id] = None
 
     def _restore(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         print("restore")

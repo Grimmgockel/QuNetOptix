@@ -13,9 +13,12 @@ import qns.utils.log as log
 from vlaware_qnode import VLAwareQNode, Transmit
 from vl_app import VLApp
 from vl_routing import RoutingResult
+from vl_entanglement import VLEntangledPair
 
 from typing import Optional, Type
 import uuid
+
+
 
 '''
 Node application for maintaining selected virtual links 
@@ -25,7 +28,7 @@ class VLMaintenanceApp(VLApp):
         super().__init__()
 
         # members
-        self.entanglement_type: Type[QuantumModel] = BellStateEntanglement # TODO custom entanglement model for no ambiguity
+        self.entanglement_type: Type[QuantumModel] = VLEntangledPair # TODO custom entanglement model for no ambiguity
         self.app_name: str = 'vlink maintenance'
 
     def send_qubit(self, epr, routing_result: RoutingResult, transmit_id: str):
@@ -91,9 +94,9 @@ class VLMaintenanceApp(VLApp):
     def _swap(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         # dont swap for first node
         if self.own != transmit.src:
-            first: BellStateEntanglement = self.memory.read(transmit.first_epr_name)
-            second: BellStateEntanglement = self.memory.read(transmit.second_epr_name)
-            new_epr: BellStateEntanglement = first.swapping(second)
+            first: self.entanglement_type = self.memory.read(transmit.first_epr_name)
+            second: self.entanglement_type = self.memory.read(transmit.second_epr_name)
+            new_epr: self.entanglement_type = first.swapping(second)
             new_epr.name=uuid.uuid4().hex
 
             # set new EP in Alice (request src)
@@ -116,7 +119,7 @@ class VLMaintenanceApp(VLApp):
             # cleanup on receiver's side
             #result_epr = self.memory.read(transmit.first_epr_name)
             #self.memory.read(transmit.second_epr_name)
-            #self.own.trans_registry[transmit.id] = None
+            self.own.trans_registry[transmit.id] = None
 
             # TODO this could be a test case
             #src_app = transmit.src.get_apps(VLMaintenanceApp)[0]
@@ -178,10 +181,10 @@ class VLMaintenanceApp(VLApp):
             self.send_control(cchannel, transmit.src, transmit.id, 'revoke')
 
     def _restore(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        self.memory.read(self.own.trans_registry[transmit.id].second_epr_name)
-        self.own.trans_registry[transmit.id] = None
-
-        self.start_ep_distribution()
+        #self.memory.read(self.own.trans_registry[transmit.id].second_epr_name)
+        #self.own.trans_registry[transmit.id] = None
+        #self.start_ep_distribution()
+        pass
 
     def _vlink(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         pass

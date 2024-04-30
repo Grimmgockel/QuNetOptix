@@ -116,7 +116,6 @@ class VLApp(ABC, Application):
             return
         epr = self.memory.get(transmit.second_epr_name)
         if epr is None: 
-            raise Exception("does this occur?")
             return
 
         routing_result: RoutingResult = self.net.query_route(self.own, transmit.dst)
