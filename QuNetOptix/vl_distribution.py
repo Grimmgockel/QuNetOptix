@@ -210,11 +210,6 @@ class VLEnabledDistributionApp(VLApp):
         send_event = RecvQubitOverVL(self._simulator.current_time, qubit=new_epr, src=alice, dest=charlie, repeater=self.own, by=self) # no delay on vlinks, just use current time
         self._simulator.add_event(send_event)
 
-        # TODO next_teleport.second_epr is not up to date here ?
-        # TODO swap next_teleport.first with vlink.second ?
-        # TODO clear vlink transmit 
-
-
     def _restore(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         print("restore")
         return

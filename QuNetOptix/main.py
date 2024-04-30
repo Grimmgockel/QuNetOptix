@@ -27,23 +27,6 @@ import base_routing
 
 
 
-# TODO make maintenance and routing app into strategy pattern to just implement the other stuff 
-# TODO ROUTING
-# have virtual links as requests in the net (entanglement that doesn't decohere?)
-# each node has its next virtual link next to it, this is taken into account for routing 
-# implement routing with virtual links
-
-# TODO VIRTUAL LINK SELECTION
-# implement selection algo for virtual links
-
-# TODO VIZ
-# viz: look into random topo and waxman topo to FIND A TOPOLOGY WHERE MEANINGFUL PLOTS EMERGE
-# get basic plot for 2 curves comparing base routing with custom routing
-# look into routing papers for more meaningful methodology
-# look into docs for multicore sim
-# save experiments into results.csv
-# get cooler plot framework than matplotlib
-# think about error/loss/decoherence models, entanglement models and hardware details
 if __name__ == '__main__':
 
     oracle = NetworkOracle()
