@@ -10,8 +10,7 @@ from qns.entity.qchannel import QuantumChannel, RecvQubitPacket
 from qns.simulator.event import func_to_event
 import qns.utils.log as log
 
-from vlaware_qnode import VLAwareQNode
-from transmit import Transmit
+from vlaware_qnode import VLAwareQNode, Transmit
 from vl_app import VLApp
 from vl_routing import RoutingResult
 
@@ -58,7 +57,7 @@ class VLMaintenanceApp(VLApp):
             first_epr_name=epr.name,
             second_epr_name=next_epr.name
         )
-        self.trans_registry[epr.transmit_id] = updated_transmit
+        self.own.trans_registry[epr.transmit_id] = updated_transmit
 
         # storage
         storage_success_1 = self.memory.write(epr)
@@ -67,11 +66,11 @@ class VLMaintenanceApp(VLApp):
             # revoke distribution
             self.memory.read(epr)
             self.memory.read(next_epr)
-            self.send_control(cchannel, src_node, epr.transmit_id, 'revoke')
+            self.send_control(cchannel, src_node, epr.transmit_id, 'revoke', self.app_name)
             return
 
         # if storage successful
-        self.send_control(cchannel, src_node, epr.transmit_id, 'swap')
+        self.send_control(cchannel, src_node, epr.transmit_id, 'swap', self.app_name)
 
 
     def receive_classic(self, n: QNode, e: RecvClassicPacket):
@@ -84,7 +83,7 @@ class VLMaintenanceApp(VLApp):
         # receive message
         msg = e.packet.get()
         log.debug(f'{self}: received {msg} from {src_node.name}')
-        transmit = self.trans_registry[msg["transmit_id"]]
+        transmit = self.own.trans_registry[msg["transmit_id"]]
 
         # handle classical message
         self.control.get(msg["cmd"])(src_node, src_cchannel, transmit)
@@ -110,14 +109,14 @@ class VLMaintenanceApp(VLApp):
             log.debug(f'{self}: performed swap (({alice.name}, {self.own.name}) - ({self.own.name}, {charlie.name})) -> ({alice.name}, {charlie.name})')
 
         # send next
-        self.send_control(src_cchannel, src_node, transmit.id, 'next')
+        self.send_control(src_cchannel, src_node, transmit.id, 'next', self.app_name)
 
     def _next(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         if self.own == transmit.dst: # successful distribution
             # cleanup on receiver's side
             result_epr = self.memory.read(transmit.first_epr_name)
             self.memory.read(transmit.second_epr_name)
-            self.trans_registry[transmit.id] = None
+            self.own.trans_registry[transmit.id] = None
 
             # TODO this could be a test case
             #src_app = transmit.src.get_apps(VLMaintenanceApp)[0]
@@ -126,7 +125,7 @@ class VLMaintenanceApp(VLApp):
 
             # send 'success' control to source node
             cchannel: Optional[ClassicChannel] = self.own.get_cchannel(transmit.src) # TODO implemented for fully meshed classical network
-            self.send_control(cchannel, transmit.src, transmit.id, 'success')
+            self.send_control(cchannel, transmit.src, transmit.id, 'success', self.app_name)
 
             # TODO just testing restore  
             #self.state[transmit.id] = None
@@ -143,6 +142,8 @@ class VLMaintenanceApp(VLApp):
 
     def _success(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         log.info(f'{self}: established vlink ({self.own.name}, {src_node.name})')
+        cchannel: Optional[ClassicChannel] = self.own.get_cchannel(src_node) 
+        self.send_control(cchannel, self.own, transmit.id, "vlink", "vlink enabled routing")
 
         # TODO just for testing seperate app communication
         #classic_packet = ClassicPacket(
@@ -171,13 +172,16 @@ class VLMaintenanceApp(VLApp):
         log.debug(f'{self}: cleaning memory')
         self.memory.read(transmit.first_epr_name)
         self.memory.read(transmit.second_epr_name)
-        self.trans_registry[transmit.id] = None
+        self.own.trans_registry[transmit.id] = None
         if self.own != None: # recurse back to source node
             cchannel = self.own.get_cchannel(transmit.src)
             self.send_control(cchannel, transmit.src, transmit.id, 'revoke')
 
     def _restore(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        self.memory.read(self.trans_registry[transmit.id].second_epr_name)
-        self.trans_registry[transmit.id] = None
+        self.memory.read(self.own.trans_registry[transmit.id].second_epr_name)
+        self.own.trans_registry[transmit.id] = None
 
         self.start_ep_distribution()
+
+    def _vlink(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
+        log.debug(f'{self}: vlink')

@@ -12,8 +12,7 @@ from qns.simulator.simulator import Simulator
 from qns.simulator.event import func_to_event
 import qns.utils.log as log
 
-from transmit import Transmit
-from vlaware_qnode import VLAwareQNode
+from vlaware_qnode import VLAwareQNode, Transmit
 from vl_routing import RoutingResult
 
 from typing import Optional, Dict, Callable, Type, Any
@@ -33,14 +32,14 @@ class VLApp(ABC, Application):
             "next": self._next,
             "success": self._success,
             "revoke": self._revoke,
-            "restore": self._restore
+            "vlink": self._vlink,
+            "restore": self._restore,
         }
         self.entanglement_type: Type[QuantumModel] = None
         self.app_name: str = None
         self.own: VLAwareQNode = None 
         self.memory: QuantumMemory = None 
         self.net: QuantumNetwork = None 
-        self.trans_registry: Dict[str, Transmit] = {}
 
         # ep info can be vlink or standard ep
         self.src: Optional[VLAwareQNode] = None
@@ -100,19 +99,19 @@ class VLApp(ABC, Application):
             second_epr_name=epr.name,
             start_time_s=self._simulator.current_time.sec
         )
-        self.trans_registry[epr.transmit_id] = transmit
+        self.own.trans_registry[epr.transmit_id] = transmit
 
         store_success = self.memory.write(epr)
         if not store_success:
             self.memory.read(epr)
-            self.trans_registry[epr.transmit_id] = None
+            self.own.trans_registry[epr.transmit_id] = None
 
         log.debug(f'{self}: start new ep distribution: {transmit}')
         self.send_count += 1
         self.distribute_qubit_adjacent(epr.transmit_id)
 
     def distribute_qubit_adjacent(self, transmit_id: str):
-        transmit = self.trans_registry.get(transmit_id)
+        transmit = self.own.trans_registry.get(transmit_id)
         if transmit is None:
             raise Exception("does this occur?")
             #return
@@ -129,9 +128,9 @@ class VLApp(ABC, Application):
     '''
     Send classical control message
     '''
-    def send_control(self, cchannel: ClassicChannel, dst: VLAwareQNode, transmit_id: str, control: str):
+    def send_control(self, cchannel: ClassicChannel, dst: VLAwareQNode, transmit_id: str, control: str, app_name: str):
         classic_packet = ClassicPacket(
-            msg={"cmd": control, "transmit_id": transmit_id, 'app_name': self.app_name}, 
+            msg={"cmd": control, "transmit_id": transmit_id, 'app_name': app_name}, 
             src=self.own, 
             dest=dst
         )
@@ -153,13 +152,13 @@ class VLApp(ABC, Application):
     Remote access
     '''
     def query_transmit(self, id: int):
-        return self.trans_registry[id]
+        return self.own.trans_registry[id]
 
     '''
     Remote access
     '''
     def set_first_epr(self, epr: QuantumModel, transmit_id: str):
-        transmit = self.trans_registry.get(transmit_id, None)
+        transmit = self.own.trans_registry.get(transmit_id, None)
         if transmit is None or transmit.first_epr_name is None:
             return
         self.memory.read(transmit.first_epr_name)
@@ -170,7 +169,7 @@ class VLApp(ABC, Application):
     Remote access
     '''
     def set_second_epr(self, epr: QuantumModel, transmit_id: str):
-        transmit = self.trans_registry.get(transmit_id, None)
+        transmit = self.own.trans_registry.get(transmit_id, None)
         if transmit is None or transmit.second_epr_name is None:
             return
         self.memory.read(transmit.second_epr_name)
@@ -206,8 +205,13 @@ class VLApp(ABC, Application):
         pass
 
     @abstractmethod
+    def _vlink(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
+        pass
+
+    @abstractmethod
     def _restore(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         pass
+
 
     def __repr__(self) -> str:
         return f'[{self.own.name}]\t<{self.app_name}>\t'
