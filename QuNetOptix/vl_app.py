@@ -113,17 +113,16 @@ class VLApp(ABC, Application):
     def distribute_qubit_adjacent(self, transmit_id: str):
         transmit = self.own.trans_registry.get(transmit_id)
         if transmit is None:
-            raise Exception("does this occur?")
-            #return
+            return
         epr = self.memory.get(transmit.second_epr_name)
         if epr is None: 
             raise Exception("does this occur?")
-            #return
+            return
 
         routing_result: RoutingResult = self.net.query_route(self.own, transmit.dst)
         if not routing_result:
             raise Exception(f"{self}: Route error.")
-        self.send_qubit(epr, routing_result)
+        self.send_qubit(epr, routing_result, transmit_id)
 
     '''
     Send classical control message
@@ -177,7 +176,7 @@ class VLApp(ABC, Application):
         transmit.second_epr_name = epr.name
 
     @abstractmethod
-    def send_qubit(self, qchannel: QuantumChannel, epr, next_hop):
+    def send_qubit(self, epr, next_hop, transmit_id):
         pass
 
     @abstractmethod

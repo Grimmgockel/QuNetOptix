@@ -10,6 +10,7 @@ from vl_routing import RoutingResult
 
 from typing import Type, Optional
 import uuid
+import queue
 
 '''
 Node application for entanglement distribution over physical and virtual links
@@ -22,19 +23,13 @@ class VLEnabledDistributionApp(VLApp):
         self.entanglement_type: Type[QuantumModel] = WernerStateEntanglement # TODO custom entanglement model for no ambiguity
         self.app_name: str = 'vlink enabled routing'
 
-    def send_qubit(self, epr, routing_result: RoutingResult):
+    def send_qubit(self, epr, routing_result: RoutingResult, transmit_id: str):
         next_hop: VLAwareQNode = routing_result.next_hop_virtual
-
-        print(routing_result.metric_physical)
-        print(routing_result.metric_virtual)
-        print(routing_result.path_physical)
-        print(routing_result.path_virtual)
-        print(routing_result.next_hop_physical)
-        print(routing_result.next_hop_virtual)
 
         if routing_result.vlink:
             # TODO put qubit into queue and wait for 'vlink' event, (keywords: multiplexing, asynchronous)
-            log.debug(f'{self}: waiting for teleportation of qubit {epr} to {next_hop.name}')
+            log.debug(f'{self}: waiting for teleportation of transmit {transmit_id} to {next_hop.name}')
+            self.own.teleport_buf.put(transmit_id)
             return
 
         log.debug(f'{self}: physical transmission of qubit {epr} to {next_hop}')
@@ -157,7 +152,17 @@ class VLEnabledDistributionApp(VLApp):
 
     def _vlink(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         # TODO take next transmission in queue and teleport over vlink, raise recvqubitevent to trigger receive_qubit
-        log.debug(f'{self}: vlink')
+        vlink_transmit: Transmit = transmit
+        next_teleport: Transmit = self.own.trans_registry[self.own.teleport_buf.get()]
+
+        log.debug(f'{self}: vlink transmit first {vlink_transmit.first_epr_name}')
+        log.debug(f'{self}: vlink transmit second {vlink_transmit.second_epr_name}')
+        log.debug(f'{self}: next transmit first {next_teleport.first_epr_name}')
+        log.debug(f'{self}: next transmit second {next_teleport.second_epr_name}')
+
+        # TODO next_teleport.second_epr is not up to date here ?
+        # TODO swap next_teleport.first with vlink.second ?
+        # TODO clear vlink transmit 
 
     def _restore(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         print("restore")

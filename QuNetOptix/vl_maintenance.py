@@ -28,7 +28,7 @@ class VLMaintenanceApp(VLApp):
         self.entanglement_type: Type[QuantumModel] = BellStateEntanglement # TODO custom entanglement model for no ambiguity
         self.app_name: str = 'vlink maintenance'
 
-    def send_qubit(self, epr, routing_result: RoutingResult):
+    def send_qubit(self, epr, routing_result: RoutingResult, transmit_id: str):
         next_hop: VLAwareQNode = routing_result.next_hop_physical
         log.debug(f'{self}: physical transmission of qubit {epr} to {next_hop}')
         qchannel: QuantumChannel = self.own.get_qchannel(next_hop)
@@ -114,9 +114,9 @@ class VLMaintenanceApp(VLApp):
     def _next(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         if self.own == transmit.dst: # successful distribution
             # cleanup on receiver's side
-            result_epr = self.memory.read(transmit.first_epr_name)
-            self.memory.read(transmit.second_epr_name)
-            self.own.trans_registry[transmit.id] = None
+            #result_epr = self.memory.read(transmit.first_epr_name)
+            #self.memory.read(transmit.second_epr_name)
+            #self.own.trans_registry[transmit.id] = None
 
             # TODO this could be a test case
             #src_app = transmit.src.get_apps(VLMaintenanceApp)[0]
@@ -124,7 +124,7 @@ class VLMaintenanceApp(VLApp):
             #assert(result_epr == src_epr)
 
             # send 'success' control to source node
-            cchannel: Optional[ClassicChannel] = self.own.get_cchannel(transmit.src) # TODO implemented for fully meshed classical network
+            cchannel: Optional[ClassicChannel] = self.own.get_cchannel(transmit.src) 
             self.send_control(cchannel, transmit.src, transmit.id, 'success', self.app_name)
 
             # TODO just testing restore  
@@ -141,7 +141,7 @@ class VLMaintenanceApp(VLApp):
         self.distribute_qubit_adjacent(transmit.id)
 
     def _success(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        log.info(f'{self}: established vlink ({self.own.name}, {src_node.name})')
+        log.info(f'{self}: established vlink ({self.own.name}, {src_node.name}) {transmit}')
         cchannel: Optional[ClassicChannel] = self.own.get_cchannel(src_node) 
         self.send_control(cchannel, self.own, transmit.id, "vlink", "vlink enabled routing")
 
@@ -184,4 +184,4 @@ class VLMaintenanceApp(VLApp):
         self.start_ep_distribution()
 
     def _vlink(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        log.debug(f'{self}: vlink')
+        pass
