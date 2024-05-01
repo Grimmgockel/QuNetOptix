@@ -50,6 +50,7 @@ class VLEnabledDistributionApp(VLApp):
             self.own.waiting_for_vlink_buf.put(transmit_id)
             if self.own.vlink_buf.empty() and next_hop.vlink_buf.empty():
                 log.debug(f'{self}: waiting for vlink on {self.own.name} to {next_hop.name} for transmit {transmit_id}')
+                self.waiting_for_vlink = True
                 return
 
             self._vlink(next_hop, None, None)
@@ -227,6 +228,7 @@ class VLEnabledDistributionApp(VLApp):
         # clear vlink transmission, vlink is consumed
         vlink_transmit.dst.trans_registry[vlink_transmit.id] = None
         vlink_transmit.src.trans_registry[vlink_transmit.id] = None
+        self.waiting_for_vlink = False
 
         log.debug(f'{self}: performed swap using vlink (({alice.name}, {self.own.name}) - ({self.own.name}, {charlie.name})) -> ({alice.name}, {charlie.name})')
 

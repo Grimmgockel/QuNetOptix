@@ -41,6 +41,7 @@ class VLApp(ABC, Application):
         self.own: VLAwareQNode = None 
         self.memory: QuantumMemory = None 
         self.net: QuantumNetwork = None 
+        self.waiting_for_vlink: bool = False # always false for maintenance app
 
         # ep info can be vlink or standard ep
         self.src: Optional[VLAwareQNode] = None
@@ -100,6 +101,8 @@ class VLApp(ABC, Application):
         t = self._simulator.tc + Time(sec=1 / self.send_rate)
         event = func_to_event(t, self.start_ep_distribution, by=self)
         self._simulator.add_event(event)
+        if self.memory.is_full() or self.waiting_for_vlink:
+            return
 
         # generate base epr
         epr = self.generate_qubit(self.own, self.dst, None)

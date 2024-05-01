@@ -4,6 +4,8 @@ from config import Config
 from config import Job
 from vl_topo import CustomDoubleStarTopology
 
+# TODO swap and receive classic are the same for both functions, subclassing not necessary maybe
+# TODO split receive qubit into 2 functions
 # TODO implement success and tear down for distribution app and think about memory
 # TODO multiple vlinks?
 

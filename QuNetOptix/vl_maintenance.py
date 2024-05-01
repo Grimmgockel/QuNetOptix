@@ -186,4 +186,4 @@ class VLMaintenanceApp(VLApp):
             self.send_control(cchannel, transmit.src, transmit.id, 'revoke', 'vlink maintenance')
 
     def _vlink(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        pass
+        raise NotImplementedError()
