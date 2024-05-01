@@ -18,7 +18,7 @@ class VLAwareQNode(QNode):
         self.has_vlink = False
         self.vlinks: List[Request] = []
         self.trans_registry: Dict[str, Transmit] = {}
-        self.teleport_buf = queue.Queue() # TODO shared resource
+        self.vlink_buf = queue.Queue() # TODO shared resource
 
     def add_vlink(self, vlink: Request):
         self.vlinks.append(vlink)

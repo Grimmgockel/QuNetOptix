@@ -71,6 +71,8 @@ class VLApp(ABC, Application):
 
         if self.dst is not None: # sender
             t = simulator.ts
+            self.send_rate = request.attr['send_rate'] 
+            print(self.send_rate)
             event = func_to_event(t, self.start_ep_distribution, by=self)
             self._simulator.add_event(event)
 
@@ -83,6 +85,8 @@ class VLApp(ABC, Application):
         msg = event.packet.get()
         if msg['app_name'] != self.app_name:
             return
+        if msg['cmd'] == 'vlink' and self.own.vlink_buf.empty():
+            return
         self.receive_classic(node, event)
 
 
@@ -90,6 +94,14 @@ class VLApp(ABC, Application):
     Initiate EP distribution distributed algorithm as a sender node
     '''
     def start_ep_distribution(self):
+        # insert the next send event
+        '''
+        t = self._simulator.tc + Time(sec=1 / self.send_rate)
+        event = func_to_event(t, self.start_ep_distribution, by=self)
+        self._simulator.add_event(event)
+        '''
+
+        # generate base epr
         epr = self.generate_qubit(self.own, self.dst, None)
 
         # save transmission
@@ -97,6 +109,7 @@ class VLApp(ABC, Application):
             id=epr.transmit_id,
             src=self.own,
             dst=self.dst,
+            first_epr_name=epr.name,
             second_epr_name=epr.name,
             start_time_s=self._simulator.current_time.sec
         )

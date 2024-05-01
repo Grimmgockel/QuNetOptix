@@ -47,8 +47,8 @@ class VLEnabledDistributionApp(VLApp):
         next_hop: VLAwareQNode = routing_result.next_hop_virtual
 
         if routing_result.vlink:
-            log.debug(f'{self}: waiting for teleportation of transmit {transmit_id} to {next_hop.name}')
-            self.own.teleport_buf.put(transmit_id)
+            log.debug(f'{self}: waiting for vlink on {self.own.name} to {next_hop.name} for transmit {transmit_id}')
+            self.own.vlink_buf.put(transmit_id)
             return
 
         log.debug(f'{self}: physical transmission of qubit {epr} to {next_hop}')
@@ -179,12 +179,9 @@ class VLEnabledDistributionApp(VLApp):
 
     def _vlink(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         vlink_transmit: Transmit = transmit
-        transmit_to_teleport: Transmit = self.own.trans_registry[self.own.teleport_buf.get()] # TODO does not work when vlink is established first
+        transmit_to_teleport: Transmit = self.own.trans_registry[self.own.vlink_buf.get()] # TODO does not work when vlink is established first
 
-        if vlink_transmit.src == self.own: # need a base epr at src node
-            first = self.generate_qubit(src=transmit_to_teleport.src, dst=transmit_to_teleport.dst, transmit_id=transmit_to_teleport.id)
-        else:
-            first: self.entanglement_type = self.memory.read(transmit_to_teleport.first_epr_name)
+        first: self.entanglement_type = self.memory.read(transmit_to_teleport.first_epr_name)
         second: self.entanglement_type = self.memory.read(vlink_transmit.second_epr_name)
 
         updated_transmit = Transmit(
