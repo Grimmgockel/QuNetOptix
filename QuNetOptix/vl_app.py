@@ -208,11 +208,6 @@ class VLApp(ABC, Application):
     def _vlink(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         pass
 
-    @abstractmethod
-    def _restore(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        pass
-
-
     def __repr__(self) -> str:
         return f'[{self.own.name}]\t<{self.app_name}>\t'
 

@@ -209,7 +209,3 @@ class VLEnabledDistributionApp(VLApp):
         # treat this same way as physical qubit transmission by sending recvqubitevent
         send_event = RecvQubitOverVL(self._simulator.current_time, qubit=new_epr, src=alice, dest=charlie, repeater=self.own, by=self) # no delay on vlinks, just use current time
         self._simulator.add_event(send_event)
-
-    def _restore(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        print("restore")
-        return

@@ -5,10 +5,19 @@ from config import Config
 from config import Job
 from vl_topo import TestTopology
 
+# TODO does not work for when it starts on the vlink node
 # TODO implement success and tear down for distribution app
 # TODO make routing work, even when vlink is established first, think about shared resource buffer
 # TODO make vlink maintance loop in a constant send rate
+# TODO multiple vlinks?
+
 # TODO test everything before sls
+# TODO test general case
+# TODO test case where vlink is at the start node
+# TODO test case where vlink points to the end node
+# TODO test case where vlink is longer
+# TODO test teardown with revoke
+
 # TODO plot networkx pretty
 # TODO save experiments into results.csv
 # TODO look into docs for multicore sim
@@ -27,7 +36,7 @@ if __name__ == '__main__':
         acc=1000000,
         send_rate=0.5,
         topo=TestTopology(),
-        job=Job.custom(sessions=[('n0', 'n11')])
+        job=Job.custom(sessions=[('n0', 'n5')])
     )
 
     oracle.run(config, loglvl=log.logging.DEBUG, monitor=False)

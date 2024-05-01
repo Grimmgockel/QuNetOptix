@@ -180,11 +180,5 @@ class VLMaintenanceApp(VLApp):
             cchannel = self.own.get_cchannel(transmit.src)
             self.send_control(cchannel, transmit.src, transmit.id, 'revoke')
 
-    def _restore(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        #self.memory.read(self.own.trans_registry[transmit.id].second_epr_name)
-        #self.own.trans_registry[transmit.id] = None
-        #self.start_ep_distribution()
-        pass
-
     def _vlink(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         pass
