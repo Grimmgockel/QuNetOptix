@@ -35,7 +35,6 @@ class VLApp(ABC, Application):
             "success": self._success,
             "revoke": self._revoke,
             "vlink": self._vlink,
-            "restore": self._restore,
         }
         self.entanglement_type: Type[QuantumModel] = None
         self.app_name: str = None

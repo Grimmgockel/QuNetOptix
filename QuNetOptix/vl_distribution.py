@@ -179,20 +179,33 @@ class VLEnabledDistributionApp(VLApp):
 
     def _vlink(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         vlink_transmit: Transmit = transmit
-        next_teleport: Transmit = self.own.trans_registry[self.own.teleport_buf.get()] # TODO does not work when vlink is established first
-        
-        # swap over vlink
-        first: self.entanglement_type = self.memory.read(next_teleport.first_epr_name)
+        transmit_to_teleport: Transmit = self.own.trans_registry[self.own.teleport_buf.get()] # TODO does not work when vlink is established first
+
+        if vlink_transmit.src == self.own: # need a base epr at src node
+            first = self.generate_qubit(src=transmit_to_teleport.src, dst=transmit_to_teleport.dst, transmit_id=transmit_to_teleport.id)
+        else:
+            first: self.entanglement_type = self.memory.read(transmit_to_teleport.first_epr_name)
         second: self.entanglement_type = self.memory.read(vlink_transmit.second_epr_name)
+
+        updated_transmit = Transmit(
+            id=first.transmit_id,
+            src=first.src,
+            dst=first.dst,
+            first_epr_name=first.name,
+            second_epr_name=second.name
+        )
+        self.own.trans_registry[first.transmit_id] = updated_transmit
+
+        # swap with vlink
         new_epr: self.entanglement_type = self.entanglement_type(first.swapping(second))
         new_epr.name=uuid.uuid4().hex
+        new_epr.src = transmit_to_teleport.src
+        new_epr.dst = transmit_to_teleport.dst
+        new_epr.transmit_id = transmit_to_teleport.id
 
-        new_epr.src = next_teleport.src
-        new_epr.dst = next_teleport.dst
-        new_epr.transmit_id = next_teleport.id
 
         # set new EP in Alice (request src)
-        alice: VLAwareQNode = next_teleport.src
+        alice: VLAwareQNode = transmit_to_teleport.src
         alice_app: VLEnabledDistributionApp = alice.get_apps(VLEnabledDistributionApp)[0]
         alice_app.set_second_epr(new_epr, transmit_id=transmit.id)
 

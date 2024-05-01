@@ -9,7 +9,7 @@ from typing import List, Tuple
 '''
 Custom double star topology for testing virtual link routing: minimum topology for virtual link exploitation
 '''
-class TestTopology(Topology):
+class CustomDoubleStarTopology(Topology):
     def __init__(self):
         super().__init__(12, nodes_apps=[VLEnabledDistributionApp(), VLMaintenanceApp()])
 

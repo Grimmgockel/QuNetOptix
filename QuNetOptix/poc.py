@@ -1,9 +1,8 @@
 import qns.utils.log as log
-
 from oracle import NetworkOracle
 from config import Config
 from config import Job
-from vl_topo import TestTopology
+from vl_topo import CustomDoubleStarTopology
 
 # TODO does not work for when it starts on the vlink node
 # TODO implement success and tear down for distribution app
@@ -35,8 +34,8 @@ if __name__ == '__main__':
         te=50,
         acc=1000000,
         send_rate=0.5,
-        topo=TestTopology(),
-        job=Job.custom(sessions=[('n0', 'n5')])
+        topo=CustomDoubleStarTopology(),
+        job=Job.custom(sessions=[('n2', 'n11')])
     )
 
     oracle.run(config, loglvl=log.logging.DEBUG, monitor=False)
