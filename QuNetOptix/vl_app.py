@@ -72,7 +72,6 @@ class VLApp(ABC, Application):
         if self.dst is not None: # sender
             t = simulator.ts
             self.send_rate = request.attr['send_rate'] 
-            print(self.send_rate)
             event = func_to_event(t, self.start_ep_distribution, by=self)
             self._simulator.add_event(event)
 
@@ -85,8 +84,11 @@ class VLApp(ABC, Application):
         msg = event.packet.get()
         if msg['app_name'] != self.app_name:
             return
-        if msg['cmd'] == 'vlink' and self.own.vlink_buf.empty():
+
+        if msg['cmd'] == 'vlink' and self.own.waiting_for_vlink_buf.empty(): 
+            # this is either source or target node of vlink
             return
+
         self.receive_classic(node, event)
 
 
@@ -95,11 +97,9 @@ class VLApp(ABC, Application):
     '''
     def start_ep_distribution(self):
         # insert the next send event
-        '''
         t = self._simulator.tc + Time(sec=1 / self.send_rate)
         event = func_to_event(t, self.start_ep_distribution, by=self)
         self._simulator.add_event(event)
-        '''
 
         # generate base epr
         epr = self.generate_qubit(self.own, self.dst, None)
@@ -109,7 +109,7 @@ class VLApp(ABC, Application):
             id=epr.transmit_id,
             src=self.own,
             dst=self.dst,
-            first_epr_name=epr.name,
+            #first_epr_name=epr.name,
             second_epr_name=epr.name,
             start_time_s=self._simulator.current_time.sec
         )
@@ -120,7 +120,7 @@ class VLApp(ABC, Application):
             self.memory.read(epr)
             self.own.trans_registry[epr.transmit_id] = None
 
-        log.debug(f'{self}: start new ep distribution: {transmit}')
+        log.debug(f'{self}: start new ep distribution: {transmit.src} -> {transmit.dst} \t[usage={self.memory.count}/{self.memory.capacity}]')
         self.send_count += 1
         self.distribute_qubit_adjacent(epr.transmit_id)
 

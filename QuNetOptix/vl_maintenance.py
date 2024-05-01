@@ -119,7 +119,7 @@ class VLMaintenanceApp(VLApp):
             # cleanup on receiver's side
             #result_epr = self.memory.read(transmit.first_epr_name)
             #self.memory.read(transmit.second_epr_name)
-            self.own.trans_registry[transmit.id] = None
+            #self.own.trans_registry[transmit.id] = None
 
             # TODO this could be a test case
             #src_app = transmit.src.get_apps(VLMaintenanceApp)[0]
@@ -145,8 +145,13 @@ class VLMaintenanceApp(VLApp):
 
     def _success(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         log.info(f'{self}: established vlink ({self.own.name}, {src_node.name}) {transmit}')
+
+        self.own.vlink_buf.put(transmit.id)
+        src_node.vlink_buf.put(transmit.id)
+
         cchannel: Optional[ClassicChannel] = self.own.get_cchannel(src_node) 
         self.send_control(cchannel, self.own, transmit.id, "vlink", "vlink enabled routing")
+        self.send_control(cchannel, transmit.dst, transmit.id, "vlink", "vlink enabled routing")
 
         # TODO just for testing seperate app communication
         #classic_packet = ClassicPacket(
@@ -176,9 +181,9 @@ class VLMaintenanceApp(VLApp):
         self.memory.read(transmit.first_epr_name)
         self.memory.read(transmit.second_epr_name)
         self.own.trans_registry[transmit.id] = None
-        if self.own != None: # recurse back to source node
+        if self.own != transmit.src: # recurse back to source node
             cchannel = self.own.get_cchannel(transmit.src)
-            self.send_control(cchannel, transmit.src, transmit.id, 'revoke')
+            self.send_control(cchannel, transmit.src, transmit.id, 'revoke', 'vlink maintenance')
 
     def _vlink(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         pass

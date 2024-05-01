@@ -47,8 +47,12 @@ class VLEnabledDistributionApp(VLApp):
         next_hop: VLAwareQNode = routing_result.next_hop_virtual
 
         if routing_result.vlink:
-            log.debug(f'{self}: waiting for vlink on {self.own.name} to {next_hop.name} for transmit {transmit_id}')
-            self.own.vlink_buf.put(transmit_id)
+            self.own.waiting_for_vlink_buf.put(transmit_id)
+            if self.own.vlink_buf.empty() and next_hop.vlink_buf.empty():
+                log.debug(f'{self}: waiting for vlink on {self.own.name} to {next_hop.name} for transmit {transmit_id}')
+                return
+
+            self._vlink(next_hop, None, None)
             return
 
         log.debug(f'{self}: physical transmission of qubit {epr} to {next_hop}')
@@ -112,7 +116,7 @@ class VLEnabledDistributionApp(VLApp):
         msg = e.packet.get()
         log.debug(f'{self}: received {msg} from {src_node.name}')
 
-        transmit = self.own.trans_registry[msg["transmit_id"]] # TODO this fails because apps have different registries
+        transmit = self.own.trans_registry[msg["transmit_id"]] 
 
         # handle classical message
         self.control.get(msg["cmd"])(src_node, src_cchannel, transmit)
@@ -170,7 +174,15 @@ class VLEnabledDistributionApp(VLApp):
         self.distribute_qubit_adjacent(transmit.id)
 
     def _success(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        print("success")
+        # the source notice that entanglement distribution is succeed.
+        result_epr = self.memory.read(transmit.second_epr_name)
+        log.debug(f"{self}: \033[92msuccessful distribution of [result_epr={result_epr}]")
+
+        # KPIs
+        #self._update_metrics(result_epr, transmit_id)
+
+        # clear transmission
+        self.own.trans_registry[transmit.id] = None
         return
 
     def _revoke(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
@@ -178,11 +190,21 @@ class VLEnabledDistributionApp(VLApp):
         return
 
     def _vlink(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        vlink_transmit: Transmit = transmit
-        transmit_to_teleport: Transmit = self.own.trans_registry[self.own.vlink_buf.get()] # TODO does not work when vlink is established first
+        vlink_transmit: Transmit = self.own.trans_registry[self.own.vlink_buf.get()]
 
-        first: self.entanglement_type = self.memory.read(transmit_to_teleport.first_epr_name)
-        second: self.entanglement_type = self.memory.read(vlink_transmit.second_epr_name)
+        # remove from other side 
+        if vlink_transmit.dst == self.own:
+            vlink_transmit.src.vlink_buf.get()
+        if vlink_transmit.src == self.own:
+            vlink_transmit.src.vlink_buf.get()
+
+        transmit_to_teleport: Transmit = self.own.trans_registry[self.own.waiting_for_vlink_buf.get()] 
+
+        first_epr_access: str = transmit_to_teleport.second_epr_name if vlink_transmit.src == transmit_to_teleport.dst and vlink_transmit.dst == transmit_to_teleport.src \
+            else transmit_to_teleport.second_epr_name if vlink_transmit.src == transmit_to_teleport.src \
+            else transmit_to_teleport.first_epr_name
+        first = self.memory.read(first_epr_access)
+        second = self.memory.read(vlink_transmit.second_epr_name)
 
         updated_transmit = Transmit(
             id=first.transmit_id,
@@ -200,19 +222,23 @@ class VLEnabledDistributionApp(VLApp):
         new_epr.dst = transmit_to_teleport.dst
         new_epr.transmit_id = transmit_to_teleport.id
 
-
         # set new EP in Alice (request src)
         alice: VLAwareQNode = transmit_to_teleport.src
         alice_app: VLEnabledDistributionApp = alice.get_apps(VLEnabledDistributionApp)[0]
-        alice_app.set_second_epr(new_epr, transmit_id=transmit.id)
+        if transmit is not None:
+            alice_app.set_second_epr(new_epr, transmit_id=transmit.id)
+        else:
+            alice_app.set_second_epr(new_epr, transmit_id=transmit_to_teleport.id)
 
         # set new EP in Charlie (next in path)
-        charlie = src_node
+        charlie = vlink_transmit.dst if self.own == vlink_transmit.src else vlink_transmit.src
         charlie_app: VLEnabledDistributionApp = charlie.get_apps(VLEnabledDistributionApp)[0]
-        charlie_app.set_first_epr(new_epr, transmit_id=transmit.id)
+        if transmit is not None:
+            charlie_app.set_first_epr(new_epr, transmit_id=transmit.id)
 
         # clear vlink transmission, vlink is consumed
-        self.own.trans_registry[vlink_transmit.id] = None
+        vlink_transmit.dst.trans_registry[vlink_transmit.id] = None
+        vlink_transmit.src.trans_registry[vlink_transmit.id] = None
 
         log.debug(f'{self}: performed swap using vlink (({alice.name}, {self.own.name}) - ({self.own.name}, {charlie.name})) -> ({alice.name}, {charlie.name})')
 

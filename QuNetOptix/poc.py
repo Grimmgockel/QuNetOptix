@@ -4,18 +4,18 @@ from config import Config
 from config import Job
 from vl_topo import CustomDoubleStarTopology
 
-# TODO does not work for when it starts on the vlink node
 # TODO implement success and tear down for distribution app
-# TODO make routing work, even when vlink is established first, think about shared resource buffer
-# TODO make vlink maintance loop in a constant send rate
 # TODO multiple vlinks?
 
-# TODO test everything before sls
-# TODO test general case
-# TODO test case where vlink is at the start node
-# TODO test case where vlink points to the end node
-# TODO test case where vlink is longer
-# TODO test teardown with revoke
+# TODO test cases for vlink routing
+# - general case
+# - physical case
+# - vlink only forward 
+# - vlink only backward 
+# - start node is vlink start node 
+# - start node is vlink end node
+# - end node is vlink end node
+# - end node is vlink start node
 
 # TODO plot networkx pretty
 # TODO save experiments into results.csv
@@ -31,11 +31,11 @@ if __name__ == '__main__':
 
     config = Config(
         ts=0,
-        te=50,
+        te=10,
         acc=1000000,
-        send_rate=10,
+        send_rate=5,
         topo=CustomDoubleStarTopology(),
-        job=Job.custom(sessions=[('n2', 'n9')])
+        job=Job.custom(sessions=[('n9', 'n2')])
     )
 
     oracle.run(config, loglvl=log.logging.DEBUG, monitor=False)
