@@ -74,7 +74,7 @@ class VLEnabledDistributionApp(VLApp):
             src_node = e.src
             # receive epr
             epr = e.qubit
-            log.debug(f'{self}: received qubit {epr} via vlink from {src_node.name} with repeater {e.repeater}')
+            log.debug(f'{self}: received qubit {epr} via vlink from {src_node.name}')
 
         # get classical connection to src node
         cchannel: ClassicChannel = self.own.get_cchannel(src_node)
@@ -147,9 +147,10 @@ class VLEnabledDistributionApp(VLApp):
     def _next(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         if self.own == transmit.dst: # successful distribution
             # cleanup on receiver's side
-            result_epr = self.memory.read(transmit.first_epr_name)
-            self.memory.read(transmit.second_epr_name)
-            self.own.trans_registry[transmit.id] = None
+            #result_epr = self.memory.read(transmit.first_epr_name)
+            #log.debug(f'{self}: RESULT EPR {result_epr}')
+            #self.memory.read(transmit.second_epr_name)
+            #self.own.trans_registry[transmit.id] = None
 
             # TODO this could be a test case
             #src_app = transmit.src.get_apps(VLMaintenanceApp)[0]
@@ -206,15 +207,6 @@ class VLEnabledDistributionApp(VLApp):
         first = self.memory.read(first_epr_access)
         second = self.memory.read(vlink_transmit.second_epr_name)
 
-        updated_transmit = Transmit(
-            id=first.transmit_id,
-            src=first.src,
-            dst=first.dst,
-            first_epr_name=first.name,
-            second_epr_name=second.name
-        )
-        self.own.trans_registry[first.transmit_id] = updated_transmit
-
         # swap with vlink
         new_epr: self.entanglement_type = self.entanglement_type(first.swapping(second))
         new_epr.name=uuid.uuid4().hex
@@ -225,16 +217,12 @@ class VLEnabledDistributionApp(VLApp):
         # set new EP in Alice (request src)
         alice: VLAwareQNode = transmit_to_teleport.src
         alice_app: VLEnabledDistributionApp = alice.get_apps(VLEnabledDistributionApp)[0]
-        if transmit is not None:
-            alice_app.set_second_epr(new_epr, transmit_id=transmit.id)
-        else:
-            alice_app.set_second_epr(new_epr, transmit_id=transmit_to_teleport.id)
+        alice_app.set_second_epr(new_epr, transmit_id=new_epr.transmit_id)
 
         # set new EP in Charlie (next in path)
         charlie = vlink_transmit.dst if self.own == vlink_transmit.src else vlink_transmit.src
         charlie_app: VLEnabledDistributionApp = charlie.get_apps(VLEnabledDistributionApp)[0]
-        if transmit is not None:
-            charlie_app.set_first_epr(new_epr, transmit_id=transmit.id)
+        charlie_app.set_first_epr(new_epr, transmit_id=new_epr.transmit_id)
 
         # clear vlink transmission, vlink is consumed
         vlink_transmit.dst.trans_registry[vlink_transmit.id] = None

@@ -4,10 +4,10 @@ from config import Config
 from config import Job
 from vl_topo import CustomDoubleStarTopology
 
-# TODO implement success and tear down for distribution app
+# TODO implement success and tear down for distribution app and think about memory
 # TODO multiple vlinks?
 
-# TODO test cases for vlink routing
+# TODO test cases for vlink routing (everything for send rate slower and faster than maintenance)
 # - general case
 # - physical case
 # - vlink only forward 
@@ -33,7 +33,7 @@ if __name__ == '__main__':
         ts=0,
         te=10,
         acc=1000000,
-        send_rate=5,
+        send_rate=10,
         topo=CustomDoubleStarTopology(),
         job=Job.custom(sessions=[('n9', 'n2')])
     )
