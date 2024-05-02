@@ -79,16 +79,50 @@ class VLApp(ABC, Application):
     def RecvQubitHandler(self, node: VLAwareQNode, event: RecvQubitPacket):
         if not isinstance(event.qubit, self.entanglement_type): 
             return
-        self.receive_qubit(event)
+        qchannel: QuantumChannel = event.qchannel 
+        src_node: VLAwareQNode = qchannel.node_list[0] if qchannel.node_list[1] == self.own else qchannel.node_list[1]
+        # receive epr
+        epr = event.qubit
+        log.debug(f'{self}: received qubit {epr} physically from {src_node.name}')
+        self.store_received_qubit(src_node, epr)
+
+    def store_received_qubit(self, src_node: VLAwareQNode, epr: QuantumModel):
+        # get sender channel 
+        cchannel: ClassicChannel = self.own.get_cchannel(src_node)
+        if cchannel is None:
+            raise Exception(f"{self}: No such classic channel")
+
+        # generate second epr for swapping
+        forward_epr = self.generate_qubit(src=epr.account.src, dst=epr.account.dst, transmit_id=epr.account.transmit_id)
+
+        # storage
+        storage_success_1 = self.memory.write(epr)
+        storage_success_2 = self.memory.write(forward_epr)
+        if not storage_success_1 or not storage_success_2:
+            # revoke distribution
+            self.memory.read(epr)
+            self.memory.read(forward_epr)
+            self.send_control(cchannel, src_node, epr.account.transmit_id, 'revoke', self.app_name)
+            return
+
+        # bookkeeping
+        updated_transmit: Transmit = Transmit(
+            id=epr.account.transmit_id,
+            src=epr.account.src,
+            dst=epr.account.dst,
+            alice=epr.account,
+            charlie=forward_epr.account,
+        )
+        updated_transmit.alice.locB = self.own
+        self.own.trans_registry[epr.account.transmit_id] = updated_transmit
+
+        # if storage successful
+        self.send_control(cchannel, src_node, epr.account.transmit_id, 'swap', self.app_name)
+
 
     def RecvClassicPacketHandler(self, node: VLAwareQNode, event: RecvClassicPacket):
         msg = event.packet.get()
         if msg['app_name'] != self.app_name:
-            return
-
-        # TODO this is wrong
-        if msg['cmd'] == 'vlink' and self.app_name == 'vlink enabled routing' and self.own.waiting_for_vlink_buf.empty(): 
-            # this is either source or target node of vlink
             return
 
         self.receive_control(node, event)
@@ -209,8 +243,10 @@ class VLApp(ABC, Application):
     def _revoke(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         # revoke transmission fully
         log.debug(f'{self}: cleaning memory')
-        self.memory.read(transmit.first_epr_name)
-        self.memory.read(transmit.second_epr_name)
+        if transmit.alice is not None:
+            self.memory.read(transmit.alice.name) 
+        if transmit.charlie is not None:
+            self.memory.read(transmit.charlie.name) 
         self.own.trans_registry[transmit.id] = None
         if self.own != transmit.src: # recurse back to source node
             cchannel = self.own.get_cchannel(transmit.src)
@@ -218,10 +254,6 @@ class VLApp(ABC, Application):
 
     @abstractmethod
     def send_qubit(self, epr, next_hop, transmit: Transmit):
-        pass
-
-    @abstractmethod
-    def receive_qubit(self, event: RecvQubitPacket):
         pass
 
     @abstractmethod
@@ -268,5 +300,5 @@ class VLApp(ABC, Application):
         self.memory.write(epr)
 
     def __repr__(self) -> str:
-        return f'[{self.own.name}]\t<{self.app_name}>\t'
+        return f'[{self.own.name}] <{self.app_name}> '
 

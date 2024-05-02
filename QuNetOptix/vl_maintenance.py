@@ -39,45 +39,6 @@ class VLMaintenanceApp(VLApp):
             raise Exception(f"{self}: No such quantum channel.")
         qchannel.send(epr, next_hop=next_hop)
 
-    def receive_qubit(self, event: RecvQubitPacket):
-        # get sender channel and node 
-        src_qchannel: QuantumChannel = event.qchannel
-        src_node: VLAwareQNode = src_qchannel.node_list[0] if src_qchannel.node_list[1] == self.own else src_qchannel.node_list[1]
-        cchannel: ClassicChannel = self.own.get_cchannel(src_node)
-        if cchannel is None:
-            raise Exception(f"{self}: No such classic channel")
-
-        # receive epr
-        epr: self.entanglement_type = event.qubit
-        log.debug(f'{self}: received qubit {epr} from {src_node.name}\t transmit: {epr.account.transmit_id}')
-
-        # generate second epr for swapping
-        forward_epr = self.generate_qubit(src=epr.account.src, dst=epr.account.dst, transmit_id=epr.account.transmit_id)
-
-        # storage
-        storage_success_1 = self.memory.write(epr)
-        storage_success_2 = self.memory.write(forward_epr)
-        if not storage_success_1 or not storage_success_2:
-            # revoke distribution
-            self.memory.read(epr)
-            self.memory.read(forward_epr)
-            self.send_control(cchannel, src_node, epr.transmit_id, 'revoke', self.app_name)
-            return
-
-        # bookkeeping
-        updated_transmit: Transmit = Transmit(
-            id=epr.account.transmit_id,
-            src=epr.account.src,
-            dst=epr.account.dst,
-            alice=epr.account,
-            charlie=forward_epr.account,
-        )
-        updated_transmit.alice.locB = self.own
-        self.own.trans_registry[epr.account.transmit_id] = updated_transmit
-
-        # if storage successful
-        self.send_control(cchannel, src_node, epr.account.transmit_id, 'swap', self.app_name)
-
 
     def receive_control(self, n: QNode, e: RecvClassicPacket):
         # get sender and channel
@@ -97,8 +58,8 @@ class VLMaintenanceApp(VLApp):
     def _success(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         log.info(f'{self}: established vlink ({self.own.name}, {src_node.name}) id={transmit.id}')
 
-        self.own.vlink_buf.put(transmit.id)
-        src_node.vlink_buf.put(transmit.id)
+        self.own.vlink_buf.put(transmit)
+        src_node.vlink_buf.put(transmit)
 
         cchannel: Optional[ClassicChannel] = self.own.get_cchannel(src_node) 
         self.send_control(cchannel, self.own, transmit.id, "vlink", "vlink enabled routing")

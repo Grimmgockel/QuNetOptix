@@ -39,15 +39,17 @@ class VLEnabledDistributionApp(VLApp):
         self.app_name: str = 'vlink enabled routing'
 
     def RecvQubitOverVLHandler(self, node: VLAwareQNode, event: RecvQubitOverVL):
-        if not isinstance(event.qubit, self.entanglement_type): 
-            return
-        self.receive_qubit(node, event)
+        src_node = event.src
+        epr = event.qubit
+        log.debug(f'{self}: received qubit {epr} via vlink from {src_node.name}')
+        self.store_received_qubit(event.src, epr)
 
+    # TODO get this into superclass
     def send_qubit(self, epr, routing_result: RoutingResult, transmit: Transmit):
         next_hop: VLAwareQNode = routing_result.next_hop_virtual
 
         if routing_result.vlink:
-            self.own.waiting_for_vlink_buf.put(transmit.id)
+            self.own.waiting_for_vlink_buf.put(transmit)
             if self.own.vlink_buf.empty() and next_hop.vlink_buf.empty():
                 log.debug(f'{self}: waiting for vlink on {self.own.name} to {next_hop.name} for transmit {transmit.id}')
                 self.waiting_for_vlink = True
@@ -62,51 +64,8 @@ class VLEnabledDistributionApp(VLApp):
             raise Exception(f"{self}: No such quantum channel.")
         qchannel.send(epr, next_hop=next_hop)
 
-    # TODO split this into 2 functions
-    def receive_qubit(self, event: RecvQubitPacket | RecvQubitOverVL):
-        # get sender channel and node 
-        if isinstance(event, RecvQubitPacket):
-            src_qchannel: QuantumChannel = event.qchannel 
-            src_node: VLAwareQNode = src_qchannel.node_list[0] if src_qchannel.node_list[1] == self.own else src_qchannel.node_list[1]
-            # receive epr
-            epr = event.qubit
-            log.debug(f'{self}: received qubit {epr} physically from {src_node.name}')
-        else:
-            src_node = event.src
-            # receive epr
-            epr = event.qubit
-            log.debug(f'{self}: received qubit {epr} via vlink from {src_node.name}')
-
-        # get classical connection to src node
-        cchannel: ClassicChannel = self.own.get_cchannel(src_node)
-        if cchannel is None:
-            raise Exception(f"{self}: No such classic channel")
-
-        # generate second epr for swapping
-        next_epr = self.generate_qubit(src=epr.src, dst=epr.dst, transmit_id=epr.transmit_id)
-        updated_transmit = Transmit(
-            id=epr.transmit_id,
-            src=epr.src,
-            dst=epr.dst,
-            first_epr_name=epr.name,
-            second_epr_name=next_epr.name
-        )
-        self.own.trans_registry[epr.transmit_id] = updated_transmit
-
-        # storage
-        storage_success_1 = self.memory.write(epr)
-        storage_success_2 = self.memory.write(next_epr)
-        if not storage_success_1 or not storage_success_2:
-            # revoke distribution
-            self.send_control(cchannel, src_node, epr.transmit_id, 'revoke', self.app_name)
-            return
-
-        # if storage successful
-        self.send_control(cchannel, src_node, epr.transmit_id, 'swap', self.app_name)
-
-
     def _success(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        result_epr = self.memory.read(transmit.second_epr_name)
+        result_epr = self.memory.read(transmit.charlie.name)
         log.debug(f"{self}: \033[92msuccessful distribution of [result_epr={result_epr}]")
         self.success_eprs.append(result_epr)
 
@@ -114,56 +73,59 @@ class VLEnabledDistributionApp(VLApp):
         self.own.trans_registry[transmit.id] = None
         return
 
+    # # TODO abstract the swapping process, this can probably go into _swap so use classic comm
     def _vlink(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        vlink_transmit: Transmit = self.own.trans_registry[self.own.vlink_buf.get()]
+        if self.own.waiting_for_vlink_buf.empty(): # we are either at src or dst of vlink
+            return
 
-        # remove from other side 
-        if vlink_transmit.dst == self.own:
+        vlink_transmit: Transmit = self.own.vlink_buf.get()
+        dir = 'backward' if self.own == vlink_transmit.dst else 'forward'
+        # remove from other side
+        if dir == 'forward':
+            vlink_transmit.dst.vlink_buf.get()
+        if dir == 'backward':
             vlink_transmit.src.vlink_buf.get()
-        if vlink_transmit.src == self.own:
-            vlink_transmit.src.vlink_buf.get()
 
-        transmit_to_teleport: Transmit = self.own.trans_registry[self.own.waiting_for_vlink_buf.get()] 
+        transmit_to_teleport: Transmit = self.own.waiting_for_vlink_buf.get()
 
-        first_epr_access: str = transmit_to_teleport.second_epr_name if vlink_transmit.src == transmit_to_teleport.dst and vlink_transmit.dst == transmit_to_teleport.src \
-            else transmit_to_teleport.second_epr_name if vlink_transmit.src == transmit_to_teleport.src \
-            else transmit_to_teleport.first_epr_name
-        first = self.memory.read(first_epr_access)
-        second = self.memory.read(vlink_transmit.second_epr_name)
+        first = self.memory.read(transmit_to_teleport.alice.name) # TODO both of charlie's qubits are on this node, charlie gets discarded
+        second = self.memory.read(vlink_transmit.charlie.name)
 
         # swap with vlink
         new_epr: self.entanglement_type = self.entanglement_type(first.swapping(second))
-        new_epr.name=uuid.uuid4().hex
-        new_epr.src = transmit_to_teleport.src
-        new_epr.dst = transmit_to_teleport.dst
-        new_epr.transmit_id = transmit_to_teleport.id
+        new_epr.name = uuid.uuid4().hex
+        new_epr.account = EprAccount(
+            transmit_id=transmit_to_teleport.id,
+            name=new_epr.name,
+            src=transmit_to_teleport.src,
+            dst=transmit_to_teleport.dst,
+            locA=first.account.locA,
+            locB=second.account.locB,
+        )
 
         # set new EP in Alice (request src)
-        alice: VLAwareQNode = transmit_to_teleport.src
-        alice_app: VLEnabledDistributionApp = alice.get_apps(VLEnabledDistributionApp)[0]
-        alice_app.set_second_epr(new_epr, transmit_id=new_epr.transmit_id)
+        backward_node: VLAwareQNode = transmit_to_teleport.src
+        backward_node_app: VLEnabledDistributionApp = backward_node.get_apps(VLEnabledDistributionApp)[0]
+        backward_node_app.set_epr(new_epr, 'alice')
 
         # set new EP in Charlie (next in path)
-        charlie = vlink_transmit.dst if self.own == vlink_transmit.src else vlink_transmit.src
-        charlie_app: VLEnabledDistributionApp = charlie.get_apps(VLEnabledDistributionApp)[0]
-        charlie_app.set_first_epr(new_epr, transmit_id=new_epr.transmit_id)
+        forward_node = vlink_transmit.dst if dir == 'forward' else vlink_transmit.src
+        forward_node_app: VLEnabledDistributionApp = forward_node.get_apps(VLEnabledDistributionApp)[0]
+        forward_node_app.set_epr(new_epr, 'charlie')
 
         # clear vlink transmission, vlink is consumed
-        self.memory.read(vlink_transmit.first_epr_name)
-        self.memory.read(vlink_transmit.second_epr_name)
-        self.own.trans_registry[vlink_transmit.id] = None
-        #vlink_transmit.dst.trans_registry[vlink_transmit.id] = None
-        #vlink_transmit.src.trans_registry[vlink_transmit.id] = None
+        vlink_transmit.dst.trans_registry[vlink_transmit.id]= None
+        vlink_transmit.src.trans_registry[vlink_transmit.id]= None
         self.waiting_for_vlink = False
 
-        log.debug(f'{self}: performed swap using vlink (({alice.name}, {self.own.name}) - ({self.own.name}, {charlie.name})) -> ({alice.name}, {charlie.name})')
+        log.debug(f'{self}: performed swap using vlink (({backward_node.name}, {self.own.name}) - ({self.own.name}, {forward_node.name})) -> ({backward_node.name}, {forward_node.name})')
 
         # instruct maintenance to clear memory
-        print(vlink_transmit)
-        cchannel: Optional[ClassicChannel] = self.own.get_cchannel(src_node) 
-        self.send_control(cchannel, src_node, vlink_transmit.id, "vlink", "vlink maintenance")
+        #print(vlink_transmit)
+        #cchannel: Optional[ClassicChannel] = self.own.get_cchannel(src_node) 
+        #self.send_control(cchannel, src_node, vlink_transmit.id, "vlink", "vlink maintenance")
 
         # treat this same way as physical qubit transmission by sending recvqubitevent
-        send_event = RecvQubitOverVL(self._simulator.current_time, qubit=new_epr, src=alice, dest=charlie, vlink_transmit_id=vlink_transmit.id, by=self) # no delay on vlinks, just use current time
+        send_event = RecvQubitOverVL(self._simulator.current_time, qubit=new_epr, src=backward_node, dest=forward_node, vlink_transmit_id=vlink_transmit.id, by=self) # no delay on vlinks, just use current time
         self._simulator.add_event(send_event)
 

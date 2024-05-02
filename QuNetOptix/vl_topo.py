@@ -12,8 +12,8 @@ Custom double star topology for testing virtual link routing: minimum topology f
 '''
 class CustomDoubleStarTopology(Topology):
     def __init__(self):
-        #super().__init__(12, memory_args=[{"capacity": 50}], nodes_apps=[VLEnabledDistributionApp(),VLMaintenanceApp()])
-        super().__init__(12, memory_args=[{"capacity": 50}], nodes_apps=[DummyApp(), VLMaintenanceApp()])
+        super().__init__(12, memory_args=[{"capacity": 50}], nodes_apps=[VLEnabledDistributionApp(),VLMaintenanceApp()])
+        #super().__init__(12, memory_args=[{"capacity": 50}], nodes_apps=[DummyApp(),VLMaintenanceApp()])
 
     def build(self) -> Tuple[List[VLAwareQNode], List[QuantumChannel]]:
         nl: List[VLAwareQNode] = []
