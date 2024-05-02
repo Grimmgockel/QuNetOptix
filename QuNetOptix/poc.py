@@ -3,8 +3,8 @@ from oracle import NetworkOracle
 from config import Config
 from config import Job
 from vl_topo import CustomDoubleStarTopology
+from typing import List
 
-# TODO make trans registry global
 # TODO fix quantum memory issues
 # TODO REFACTOR
 # TODO test cases for vlink routing (everything for send rate slower and faster than maintenance)
@@ -30,15 +30,32 @@ from vl_topo import CustomDoubleStarTopology
 if __name__ == '__main__': 
     oracle = NetworkOracle()
 
-    config = Config(
-        ts=0,
-        te=10,
-        acc=1000000,
-        send_rate=1,
-        topo=CustomDoubleStarTopology(),
-        job=Job.custom(sessions=[('n11', 'n0')])
-    )
+    test_jobs: List[Job] = [
+        Job.custom(sessions=[('n0', 'n2')]), # physical (no vlink)
 
-    oracle.run(config, loglvl=log.logging.DEBUG, monitor=False)
+        Job.custom(sessions=[('n0', 'n11')]), # general forward
+        Job.custom(sessions=[('n11', 'n0')]), # general backward
+
+        Job.custom(sessions=[('n2', 'n11')]), # vlink start forward
+        Job.custom(sessions=[('n9', 'n0')]), # vlink start backward
+        Job.custom(sessions=[('n0', 'n9')]), # vlink end forward
+        Job.custom(sessions=[('n11', 'n2')]), # vlink end backward
+
+        Job.custom(sessions=[('n2', 'n9')]), # vlink only forward
+        Job.custom(sessions=[('n9', 'n2')]), # vlink only backward
+    ]
+    for job in test_jobs:
+        config = Config(
+            ts=0,
+            te=10,
+            acc=1000000,
+            send_rate=1,
+            topo=CustomDoubleStarTopology(),
+            job=job,
+        )
+        print(config)
+        oracle.run(config, loglvl=log.logging.DEBUG, monitor=False)
+        print()
+        print()
 
 
