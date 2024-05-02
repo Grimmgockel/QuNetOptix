@@ -4,11 +4,9 @@ from config import Config
 from config import Job
 from vl_topo import CustomDoubleStarTopology
 
-# TODO swap and receive classic are the same for both functions, subclassing not necessary maybe
-# TODO split receive qubit into 2 functions
-# TODO implement success and tear down for distribution app and think about memory
-# TODO multiple vlinks?
-
+# TODO make trans registry global
+# TODO fix quantum memory issues
+# TODO REFACTOR
 # TODO test cases for vlink routing (everything for send rate slower and faster than maintenance)
 # - general case
 # - physical case
@@ -18,6 +16,7 @@ from vl_topo import CustomDoubleStarTopology
 # - start node is vlink end node
 # - end node is vlink end node
 # - end node is vlink start node
+# TODO multiple vlinks?
 
 # TODO plot networkx pretty
 # TODO save experiments into results.csv
@@ -37,7 +36,7 @@ if __name__ == '__main__':
         acc=1000000,
         send_rate=10,
         topo=CustomDoubleStarTopology(),
-        job=Job.custom(sessions=[('n9', 'n2')])
+        job=Job.custom(sessions=[('n0', 'n11')])
     )
 
     oracle.run(config, loglvl=log.logging.DEBUG, monitor=False)

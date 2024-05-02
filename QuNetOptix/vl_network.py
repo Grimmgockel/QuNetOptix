@@ -5,9 +5,10 @@ from qns.network.requests import Request
 from vlaware_qnode import VLAwareQNode
 from vl_routing import VLEnabledRouteAlgorithm
 from vl_net_graph import VLNetGraph
-from typing import Dict, List
+from typing import Dict, List, Optional
 import networkx as nx
 import matplotlib.pyplot as plt
+from dataclasses import dataclass
     
 '''
 Quantum network containing special request types called superlinks, that are considered for routing as entanglement links
@@ -40,3 +41,4 @@ class VLNetwork(QuantumNetwork):
         self.vlinks.append(vlink)
         src.add_vlink(vlink)
         dest.add_vlink(vlink)
+

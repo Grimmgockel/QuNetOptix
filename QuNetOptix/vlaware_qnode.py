@@ -15,23 +15,30 @@ QNode with knowledge over vlink requests
 class VLAwareQNode(QNode):
     def __init__(self, name: str = None, apps: List[Application] = None):
         super().__init__(name, apps)
+        self.trans_registry: Dict[str, Transmit] = {}
         self.has_vlink = False
         self.vlinks: List[Request] = []
-        self.trans_registry: Dict[str, Transmit] = {}
         self.vlink_buf = queue.Queue() # TODO shared resource
         self.waiting_for_vlink_buf = queue.Queue() # TODO shared resource
 
     def add_vlink(self, vlink: Request):
         self.vlinks.append(vlink)
 
-'''
-Bookkeeping
-'''
+
+@dataclass
+class EprAccount:
+    transmit_id: str = None
+    name: str = None
+    src: VLAwareQNode = None # for retrieving transmit data when physically transmitting qubits
+    dst: VLAwareQNode = None
+    locA: VLAwareQNode = None
+    locB: VLAwareQNode = None
+
 @dataclass
 class Transmit:
     id: str
     src: VLAwareQNode
     dst: VLAwareQNode
-    first_epr_name: Optional[str] = None
-    second_epr_name: Optional[str] = None
+    alice: EprAccount = None # points backward 
+    charlie: EprAccount = None # points forwards
     start_time_s: Optional[float] = None
