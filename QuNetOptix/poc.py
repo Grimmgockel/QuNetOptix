@@ -36,8 +36,9 @@ if __name__ == '__main__':
         acc=1000000,
         send_rate=1,
         topo=CustomDoubleStarTopology(),
-        job=Job.custom(sessions=[('n2', 'n11')])
+        job=Job.custom(sessions=[('n11', 'n0')])
     )
 
     oracle.run(config, loglvl=log.logging.DEBUG, monitor=False)
+
 

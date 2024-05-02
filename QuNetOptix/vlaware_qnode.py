@@ -31,14 +31,22 @@ class EprAccount:
     name: str = None
     src: VLAwareQNode = None # for retrieving transmit data when physically transmitting qubits
     dst: VLAwareQNode = None
-    locA: VLAwareQNode = None
-    locB: VLAwareQNode = None
+    locA: Optional[VLAwareQNode] = None 
+    locB: Optional[VLAwareQNode] = None
 
 @dataclass
 class Transmit:
     id: str
     src: VLAwareQNode
     dst: VLAwareQNode
-    alice: EprAccount = None # points backward 
-    charlie: EprAccount = None # points forwards
+    alice: Optional[EprAccount] = None # points backward 
+    charlie: Optional[EprAccount] = None # points forwards
     start_time_s: Optional[float] = None
+
+    def __repr__(self) -> str:
+        alice_locA = 'xx' if self.alice is None or self.alice.locA is None else self.alice.locA.name
+        alice_locB = 'xx' if self.alice is None or self.alice.locB is None else self.alice.locB.name
+        charlie_locA = 'xx' if self.charlie is None or self.charlie.locA is None else self.charlie.locA.name
+        charlie_locB = 'xx' if self.charlie is None or self.charlie.locB is None else self.charlie.locB.name
+
+        return f"TRANSMIT[id={self.id};src={self.src.name};dst={self.dst.name};alice=({alice_locA},{alice_locB});charlie({charlie_locA},{charlie_locB})]"

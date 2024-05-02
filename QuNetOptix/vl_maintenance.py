@@ -29,41 +29,17 @@ class VLMaintenanceApp(VLApp):
 
         # members
         self.entanglement_type: Type[QuantumModel] = VLEntangledPair # TODO custom entanglement model for no ambiguity
-        self.app_name: str = 'vlink maintenance'
-
-    def send_qubit(self, epr, routing_result: RoutingResult, transmit: Transmit):
-        next_hop: VLAwareQNode = routing_result.next_hop_physical
-        log.debug(f'{self}: physical transmission of qubit {epr} to {next_hop}')
-        qchannel: QuantumChannel = self.own.get_qchannel(next_hop)
-        if qchannel is None:
-            raise Exception(f"{self}: No such quantum channel.")
-        qchannel.send(epr, next_hop=next_hop)
-
-
-    def receive_control(self, n: QNode, e: RecvClassicPacket):
-        # get sender and channel
-        src_cchannel: ClassicChannel = e.by
-        src_node: VLAwareQNode = src_cchannel.node_list[0] if src_cchannel.node_list[1] == self.own else src_cchannel.node_list[1]
-        if src_cchannel is None:
-            raise Exception(f"{self}: No such classic channel")
-        
-        # receive message
-        msg = e.packet.get()
-        log.debug(f'{self}: received {msg} from {src_node.name}')
-        transmit = self.own.trans_registry[msg["transmit_id"]]
-
-        # handle classical message
-        self.control.get(msg["cmd"])(src_node, src_cchannel, transmit)
+        self.app_name: str = 'maint'
 
     def _success(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        log.info(f'{self}: established vlink ({self.own.name}, {src_node.name}) id={transmit.id}')
+        self.log_trans(f'established vlink ({self.own.name}, {src_node.name})', transmit=transmit)
 
         self.own.vlink_buf.put(transmit)
         src_node.vlink_buf.put(transmit)
 
         cchannel: Optional[ClassicChannel] = self.own.get_cchannel(src_node) 
-        self.send_control(cchannel, self.own, transmit.id, "vlink", "vlink enabled routing")
-        self.send_control(cchannel, transmit.dst, transmit.id, "vlink", "vlink enabled routing")
+        self.send_control(cchannel, self.own, transmit.id, "vlink", "distro")
+        self.send_control(cchannel, transmit.dst, transmit.id, "vlink", "distro")
 
     def _vlink(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         # TODO clear vlink on this side
