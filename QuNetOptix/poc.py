@@ -5,10 +5,12 @@ from config import Job
 from vl_topo import CustomDoubleStarTopology
 from typing import List
 
+# TODO meta data dataclass for test purposes
+# TODO entanglement tracker (observer pattern) -> animation??
 # TODO fix issues with test cases, for vlink only: result epr is None
 # TODO fix quantum memory issues
-# TODO TEST ROUTING
-# TODO REFACTOR
+# TODO TEST ROUTING !!!!!!!
+# TODO REFACTOR swapping code still duplicate
 # TODO multiple vlinks?
 
 # TODO plot networkx pretty
