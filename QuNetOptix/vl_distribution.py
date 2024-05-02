@@ -14,6 +14,7 @@ from vl_entanglement import StandardEntangledPair
 from typing import Type, Optional, Any
 import uuid
 import queue
+import simple_colors
 
 class RecvQubitOverVL(Event):
     def __init__(self, t: Optional[Time] = None, qubit: QuantumModel = None, src: VLAwareQNode = None, dest: VLAwareQNode = None, vlink_transmit_id: str = None, by: Optional[Any] = None):
@@ -43,7 +44,7 @@ class VLEnabledDistributionApp(VLApp):
 
     def _success(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         result_epr = self.memory.read(transmit.charlie.name)
-        self.log_trans(f"\033[92msuccessful distribution of [result_epr={result_epr}]", transmit=transmit)
+        self.log_trans(simple_colors.green(f"successful distribution of [result_epr={result_epr}]"), transmit=transmit)
         self.success_eprs.append(result_epr)
 
         # clear transmission

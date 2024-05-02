@@ -20,6 +20,7 @@ from vl_entanglement import StandardEntangledPair
 from typing import Optional, Dict, Callable, Type, Any, Tuple
 from abc import ABC, abstractmethod
 import uuid
+from simple_colors import *
 
 '''
 Abstract class for node protocol in virtual link network

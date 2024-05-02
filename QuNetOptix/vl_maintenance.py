@@ -18,7 +18,7 @@ from vl_entanglement import VLEntangledPair
 from typing import Optional, Type
 import uuid
 
-
+import simple_colors
 
 '''
 Node application for maintaining selected virtual links 
@@ -32,7 +32,7 @@ class VLMaintenanceApp(VLApp):
         self.app_name: str = 'maint'
 
     def _success(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        self.log_trans(f'established vlink ({self.own.name}, {src_node.name})', transmit=transmit)
+        self.log_trans(simple_colors.magenta(f'established vlink ({self.own.name}, {src_node.name})'), transmit=transmit)
 
         self.own.vlink_buf.put(transmit)
         src_node.vlink_buf.put(transmit)

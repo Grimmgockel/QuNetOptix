@@ -5,6 +5,7 @@ from config import Job
 from vl_topo import CustomDoubleStarTopology
 from typing import List
 
+# TODO fix issues with test cases, for vlink only: result epr is None
 # TODO fix quantum memory issues
 # TODO TEST ROUTING
 # TODO REFACTOR
