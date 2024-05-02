@@ -6,16 +6,8 @@ from vl_topo import CustomDoubleStarTopology
 from typing import List
 
 # TODO fix quantum memory issues
+# TODO TEST ROUTING
 # TODO REFACTOR
-# TODO test cases for vlink routing (everything for send rate slower and faster than maintenance)
-# - general case
-# - physical case
-# - vlink only forward 
-# - vlink only backward 
-# - start node is vlink start node 
-# - start node is vlink end node
-# - end node is vlink end node
-# - end node is vlink start node
 # TODO multiple vlinks?
 
 # TODO plot networkx pretty
