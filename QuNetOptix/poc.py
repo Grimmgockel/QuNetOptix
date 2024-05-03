@@ -5,10 +5,12 @@ from config import Job
 from vl_topo import CustomDoubleStarTopology
 from typing import List
 
-# TODO fix quantum memory issues by testing vlinks and their consumption
+# TODO make overlay work
+# TODO make multiple links work !!! SHARED RESOURCE OF VLINKS !!!
+
+# TODO fix quantum memory issues by testing vlinks and their consumption (probably todo with vlink src not getting cleared)
 # TODO REFACTOR swapping code still duplicate
 
-# TODO make multiple links work
 # TODO entanglement tracker (observer pattern) -> animation??
 # TODO plot networkx pretty
 # TODO save experiments into results.csv
@@ -23,11 +25,8 @@ if __name__ == '__main__':
     oracle = NetworkOracle()
 
     test_sessions_parallel: List[Job] = [
-        ('n0', 'n11'), 
+        ('n2', 'n11'), 
         ('n2', 'n3'), 
-        ('n9', 'n2'), 
-        ('n11', 'n1'),
-        ('n8', 'n7'),
     ]
 
     config = Config(
@@ -38,11 +37,14 @@ if __name__ == '__main__':
         topo=CustomDoubleStarTopology(),
         job=Job.custom(sessions=test_sessions_parallel),
     )
-    meta_data = oracle.run(config, loglvl=log.logging.DEBUG, monitor=False)
+    meta_data = oracle.run(config, loglvl=log.logging.DEBUG, continuous=False, monitor=False)
+    print()
 
-    #for key, value in meta_data.distro_results.items():
-        #print(key)
-        #print(f'SRC: {value.src_result}')
-        #print(f'DST: {value.dst_result}')
+    for key, value in meta_data.distro_results.items():
+        print('---- SUCCESSFUL DISTRIBUTION ----')
+        print(f'ID: {key}')
+        print(f'SRC: {value.src_result}')
+        print(f'DST: {value.dst_result}')
+        print()
 
 
