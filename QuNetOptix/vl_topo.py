@@ -3,7 +3,7 @@ from qns.network.topology import Topology
 from vlaware_qnode import VLAwareQNode
 from vl_maintenance import VLMaintenanceApp
 from dummy_app import DummyApp
-from vl_distribution import VLEnabledDistributionApp
+from vl_distro import VLEnabledDistributionApp
 
 from typing import List, Tuple
 

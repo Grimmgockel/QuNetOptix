@@ -101,11 +101,12 @@ class VLApp(ABC, Application):
 
     def start_ep_distribution(self):
         # insert the next send event
-        t = self._simulator.tc + Time(sec=1 / self.send_rate)
-        event = func_to_event(t, self.start_ep_distribution, by=self)
-        self._simulator.add_event(event)
-        if self.memory._usage >= (self.memory.capacity / 2) or self.waiting_for_vlink:
-            return
+        if self.net.continuous:
+            t = self._simulator.tc + Time(sec=1 / self.send_rate)
+            event = func_to_event(t, self.start_ep_distribution, by=self)
+            self._simulator.add_event(event)
+            if self.memory._usage >= (self.memory.capacity / 2) or self.waiting_for_vlink:
+                return
 
         # generate base epr
         epr: self.entanglement_type = self.generate_qubit(self.own, self.dst, None)

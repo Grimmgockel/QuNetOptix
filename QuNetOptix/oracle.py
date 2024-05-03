@@ -22,7 +22,7 @@ class NetworkOracle():
         self._monitor: Optional[Monitor] = None
         self.data = pd.DataFrame()
 
-    def run(self, config: Config, loglvl: int = log.logging.INFO, monitor: bool = True) -> MetaData:
+    def run(self, config: Config, loglvl: int = log.logging.INFO, continuous: bool = True, monitor: bool = True) -> MetaData:
 
         # Simulator
         self._sim = Simulator(config.ts, config.te, accuracy=config.acc)
@@ -33,7 +33,7 @@ class NetworkOracle():
 
         # Network
         metadata = MetaData()
-        self._net = VLNetwork(topo=config.topo, metadata=metadata)
+        self._net = VLNetwork(topo=config.topo, metadata=metadata, continuous=continuous)
         self._net.build_route()
         if config.job.sessions is None:
             self._net.random_requests(number=config.job.session_count, attr={'send_rate': config.send_rate})
@@ -64,6 +64,7 @@ class NetworkOracle():
     
         # run sim and concat data to pd dataframe
         self._sim.run()
+        metadata.remaining_memory_usage = sum(1 for node in self._net.nodes for app in node.apps if app.memory._usage > 0)
 
         if monitor: 
             self.data = pd.concat([self.data, self._monitor.data], ignore_index=True)

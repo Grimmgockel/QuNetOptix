@@ -5,14 +5,11 @@ from config import Job
 from vl_topo import CustomDoubleStarTopology
 from typing import List
 
-# TODO meta data dataclass for test purposes
-# TODO entanglement tracker (observer pattern) -> animation??
-# TODO fix issues with test cases, for vlink only: result epr is None
-# TODO fix quantum memory issues
-# TODO TEST ROUTING !!!!!!!
+# TODO fix quantum memory issues by testing vlinks and their consumption
 # TODO REFACTOR swapping code still duplicate
-# TODO multiple vlinks?
 
+# TODO make multiple links work
+# TODO entanglement tracker (observer pattern) -> animation??
 # TODO plot networkx pretty
 # TODO save experiments into results.csv
 # TODO look into docs for multicore sim
@@ -25,36 +22,27 @@ from typing import List
 if __name__ == '__main__': 
     oracle = NetworkOracle()
 
-    test_jobs: List[Job] = [
-        #Job.custom(sessions=[('n0', 'n1')]), # physical two hops
-        #Job.custom(sessions=[('n0', 'n2')]), # physical one hop
-
-        Job.custom(sessions=[('n0', 'n11')]), # general forward
-        #Job.custom(sessions=[('n11', 'n0')]), # general backward
-
-        #Job.custom(sessions=[('n2', 'n11')]), # vlink start forward
-        #Job.custom(sessions=[('n9', 'n0')]), # vlink start backward
-        #Job.custom(sessions=[('n0', 'n9')]), # vlink end forward
-        #job.custom(sessions=[('n11', 'n2')]), # vlink end backward
-
-        #Job.custom(sessions=[('n2', 'n9')]), # vlink only forward
-        #Job.custom(sessions=[('n9', 'n2')]), # vlink only backward
+    test_sessions_parallel: List[Job] = [
+        ('n0', 'n11'), 
+        ('n2', 'n3'), 
+        ('n9', 'n2'), 
+        ('n11', 'n1'),
+        ('n8', 'n7'),
     ]
-    for job in test_jobs:
-        config = Config(
-            ts=0,
-            te=10,
-            acc=1000000,
-            send_rate=1,
-            topo=CustomDoubleStarTopology(),
-            job=job,
-        )
-        #print(config)
-        meta_data = oracle.run(config, loglvl=log.logging.DEBUG, monitor=False)
 
-        for key, value in meta_data.distro_results.items():
-            print(key)
-            print(f'SRC: {value.src_result}')
-            print(f'DST: {value.dst_result}')
+    config = Config(
+        ts=0,
+        te=10,
+        acc=1000000,
+        send_rate=1,
+        topo=CustomDoubleStarTopology(),
+        job=Job.custom(sessions=test_sessions_parallel),
+    )
+    meta_data = oracle.run(config, loglvl=log.logging.DEBUG, monitor=False)
+
+    #for key, value in meta_data.distro_results.items():
+        #print(key)
+        #print(f'SRC: {value.src_result}')
+        #print(f'DST: {value.dst_result}')
 
 

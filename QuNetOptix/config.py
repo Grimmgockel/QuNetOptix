@@ -30,7 +30,7 @@ class Config:
     acc: int 
     send_rate: float 
     topo: Topology
-    job: Job
+    job: Job = None
 
     def __repr__(self):
         return f'Config(ts={self.ts}, te={self.te}, acc={self.acc}, send_rate={self.send_rate}, node_count={self.topo.nodes_number}, sessions={self.job.session_count}, job={self.job})'

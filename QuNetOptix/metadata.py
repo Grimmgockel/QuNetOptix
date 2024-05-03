@@ -17,9 +17,8 @@ class MetaData:
     # Routing
     distribution_requests: Set[Request] = None
     vlink_requests: Set[Request] = None
-
-    
     distro_results: Dict[str, DistroResult] = None
+    remaining_memory_usage: int = 0
 
     @property
     def throughput(self) -> float:
