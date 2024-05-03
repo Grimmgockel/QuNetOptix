@@ -300,25 +300,23 @@ class VLApp(ABC, Application):
         )
         return epr
 
-    def set_epr(self, epr: QuantumModel, alice_or_charlie: str):
+    def set_charlie(self, epr: QuantumModel, charlie: VLAwareQNode):
         transmit = self.own.trans_registry.get(epr.account.transmit_id)
         if transmit is None:
             return
 
-        if alice_or_charlie == 'alice':
-            if transmit.alice is None:
-                return
-            epr_name = transmit.alice.name
-            transmit.alice = epr.account
-        elif alice_or_charlie == 'charlie':
-            if transmit.charlie is None:
-                return
-            epr_name = transmit.charlie.name
-            transmit.charlie = epr.account
-        else:
-            raise ValueError("Invalid value for 'alice_or_charlie'. It should be 'alice' or 'charlie'.")
+        transmit.charlie = epr.account
+        self.memory.read(transmit.charlie.name) # read out old alice
+        self.memory.read(epr.account.name) # read out new epr name before writing
+        self.memory.write(epr)
 
-        self.memory.read(epr_name) # read out old alice
+    def set_alice(self, epr: QuantumModel, alice: VLAwareQNode):
+        transmit = self.own.trans_registry.get(epr.account.transmit_id)
+        if transmit is None:
+            return
+
+        transmit.alice = epr.account
+        self.memory.read(transmit.alice.name) # read out old alice
         self.memory.read(epr.account.name) # read out new epr name before writing
         self.memory.write(epr)
 

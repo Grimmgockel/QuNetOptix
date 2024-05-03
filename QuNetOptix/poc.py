@@ -35,7 +35,7 @@ if __name__ == '__main__':
         #Job.custom(sessions=[('n2', 'n11')]), # vlink start forward
         #Job.custom(sessions=[('n9', 'n0')]), # vlink start backward
         #Job.custom(sessions=[('n0', 'n9')]), # vlink end forward
-        Job.custom(sessions=[('n11', 'n2')]), # vlink end backward
+        #job.custom(sessions=[('n11', 'n2')]), # vlink end backward
 
         #Job.custom(sessions=[('n2', 'n9')]), # vlink only forward
         #Job.custom(sessions=[('n9', 'n2')]), # vlink only backward

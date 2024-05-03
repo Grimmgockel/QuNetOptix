@@ -96,12 +96,14 @@ class VLEnabledDistributionApp(VLApp):
         # set new EP in Alice (request src)
         backward_node: VLAwareQNode = transmit_to_teleport.src
         backward_node_app: VLEnabledDistributionApp = backward_node.get_apps(VLEnabledDistributionApp)[0]
-        backward_node_app.set_epr(new_epr, 'alice')
 
         # set new EP in Charlie (next in path)
         forward_node = vlink_transmit.dst if dir == 'forward' else vlink_transmit.src
         forward_node_app: VLEnabledDistributionApp = forward_node.get_apps(VLEnabledDistributionApp)[0]
-        forward_node_app.set_epr(new_epr, 'charlie')
+
+        # update forward and backward nodes
+        forward_node_app.set_alice(new_epr, backward_node)
+        backward_node_app.set_charlie(new_epr, forward_node)
 
         # clear vlink transmission, vlink is consumed
         #vlink_transmit.dst.trans_registry[vlink_transmit.id]= None
