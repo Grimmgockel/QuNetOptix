@@ -16,6 +16,7 @@ import qns.utils.log as log
 from vlaware_qnode import VLAwareQNode, Transmit, EprAccount
 from vl_routing import RoutingResult
 from vl_entanglement import StandardEntangledPair
+from metadata import MetaData, DistroResult
 
 from typing import Optional, Dict, Callable, Type, Any, Tuple
 from abc import ABC, abstractmethod
@@ -217,7 +218,7 @@ class VLApp(ABC, Application):
         msg = e.packet.get()
         cmd = msg['cmd']
         transmit = self.own.trans_registry[msg["transmit_id"]] 
-        self.log_trans(f'received \'{cmd}\' from {src_node.name}', transmit=transmit)
+        self.log_trans(f'received \'{cmd}\' from {src_node.name} (as well as vlink transmit)', transmit=transmit)
 
         # handle classical message
         self.control.get(cmd)(src_node, src_cchannel, transmit)
@@ -243,12 +244,14 @@ class VLApp(ABC, Application):
             # set new EP in Alice (request src)
             backward_node: VLAwareQNode = new_epr.account.locA
             backward_node_app: self.entanglement_type = backward_node.get_apps(type(self))[0]
-            backward_node_app.set_epr(new_epr, 'charlie')
 
             # set new EP in Charlie (next in path)
             forward_node: VLAwareQNode = new_epr.account.locB
             forward_node_app: self.entanglement_type = forward_node.get_apps(type(self))[0]
-            forward_node_app.set_epr(new_epr, 'alice')
+
+            # set alicea and charlie after swap
+            backward_node_app.set_charlie(new_epr)
+            forward_node_app.set_alice(new_epr)
 
             # clear for repeater node
             #self.own.trans_registry[transmit.id] = None
@@ -261,7 +264,14 @@ class VLApp(ABC, Application):
     def _next(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         if self.own == transmit.dst: # successful distribution
             cchannel: Optional[ClassicChannel] = self.own.get_cchannel(transmit.src) 
+
+            # meta data
+            if self.app_name == 'distro':
+                result_epr: QuantumModel = self.memory.get(transmit.alice.name)
+                self.net.metadata.distro_results[transmit.id] = DistroResult(dst_result=(transmit, result_epr))
+
             self.send_control(cchannel, transmit.src, transmit.id, 'success', self.app_name)
+
             return
 
         self.distribute_qubit_adjacent(transmit.id)
@@ -300,7 +310,7 @@ class VLApp(ABC, Application):
         )
         return epr
 
-    def set_charlie(self, epr: QuantumModel, charlie: VLAwareQNode):
+    def set_charlie(self, epr: QuantumModel):
         transmit = self.own.trans_registry.get(epr.account.transmit_id)
         if transmit is None:
             return
@@ -310,7 +320,7 @@ class VLApp(ABC, Application):
         self.memory.read(epr.account.name) # read out new epr name before writing
         self.memory.write(epr)
 
-    def set_alice(self, epr: QuantumModel, alice: VLAwareQNode):
+    def set_alice(self, epr: QuantumModel):
         transmit = self.own.trans_registry.get(epr.account.transmit_id)
         if transmit is None:
             return

@@ -20,7 +20,7 @@ class VLNetwork(QuantumNetwork):
         self.metadata: MetaData = metadata
         self.metadata.distribution_requests = set()
         self.metadata.vlink_requests = set()
-        self.metadata.result_eprs = {}
+        self.metadata.distro_results = {}
 
         # members
         self.name = 'vl network'

@@ -43,10 +43,12 @@ class VLEnabledDistributionApp(VLApp):
         self.store_received_qubit(event.src, event.qubit)
 
     def _success(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        result_epr = self.memory.read(transmit.charlie.name)
+        result_epr: QuantumModel = self.memory.read(transmit.charlie.name)
         self.log_trans(simple_colors.green(f"successful distribution of [result_epr={result_epr}]"), transmit=transmit)
-        #self.success_eprs.append(result_epr)
-        self.net.metadata.result_eprs[transmit] = result_epr
+
+        # meta data
+        self.net.metadata.distro_results[transmit.id].src_result = (transmit, result_epr)
+        #self.net.metadata.result_eprs_src[transmit] = result_epr
 
         # clear transmission
         self.own.trans_registry[transmit.id] = None
@@ -102,15 +104,15 @@ class VLEnabledDistributionApp(VLApp):
         forward_node_app: VLEnabledDistributionApp = forward_node.get_apps(VLEnabledDistributionApp)[0]
 
         # update forward and backward nodes
-        forward_node_app.set_alice(new_epr, backward_node)
-        backward_node_app.set_charlie(new_epr, forward_node)
+        forward_node_app.set_alice(new_epr)
+        backward_node_app.set_charlie(new_epr)
 
         # clear vlink transmission, vlink is consumed
         #vlink_transmit.dst.trans_registry[vlink_transmit.id]= None
         #vlink_transmit.src.trans_registry[vlink_transmit.id]= None
         self.waiting_for_vlink = False
 
-        self.log_trans(f'performed swap using vlink (({backward_node.name}, {self.own.name}) - ({self.own.name}, {forward_node.name})) -> ({backward_node.name}, {forward_node.name})', transmit=transmit)
+        self.log_trans(f'performed swap using vlink (({backward_node.name}, {self.own.name}) - ({self.own.name}, {forward_node.name})) -> ({backward_node.name}, {forward_node.name})', transmit=transmit_to_teleport)
 
         # instruct maintenance to clear memory
         #print(vlink_transmit)

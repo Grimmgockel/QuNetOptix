@@ -29,7 +29,7 @@ if __name__ == '__main__':
         #Job.custom(sessions=[('n0', 'n1')]), # physical two hops
         #Job.custom(sessions=[('n0', 'n2')]), # physical one hop
 
-        #Job.custom(sessions=[('n0', 'n11')]), # general forward
+        Job.custom(sessions=[('n0', 'n11')]), # general forward
         #Job.custom(sessions=[('n11', 'n0')]), # general backward
 
         #Job.custom(sessions=[('n2', 'n11')]), # vlink start forward
@@ -49,11 +49,12 @@ if __name__ == '__main__':
             topo=CustomDoubleStarTopology(),
             job=job,
         )
-        print(config)
+        #print(config)
         meta_data = oracle.run(config, loglvl=log.logging.DEBUG, monitor=False)
 
-        for item in meta_data.result_eprs:
-            print(item)
-            print(meta_data.result_eprs[item].account)
+        for key, value in meta_data.distro_results.items():
+            print(key)
+            print(f'SRC: {value.src_result}')
+            print(f'DST: {value.dst_result}')
 
 
