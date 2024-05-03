@@ -81,7 +81,12 @@ class VLApp(ABC, Application):
         self.net: QuantumNetwork = self.own.network
 
         try:
-            request: Request = self.own.vlinks[0] if self.app_name == 'maint' else self.own.requests[0]
+            if self.app_name == 'maint':
+                request: Request = self.own.vlinks[0] 
+                self.net.metadata.distribution_requests.add(request)
+            elif self.app_name == 'distro':
+                request: Request = self.own.requests[0]
+                self.net.metadata.vlink_requests.add(request)
             self.src = request.src if self.own == request.dest else None
             self.dst = request.dest if self.own == request.src else None
         except IndexError:

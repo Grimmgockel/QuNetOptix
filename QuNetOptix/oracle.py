@@ -6,6 +6,7 @@ import qns.utils.log as log
 
 from vl_network import VLNetwork
 from config import Config
+from metadata import MetaData
 
 import os
 from typing import Any 
@@ -21,7 +22,7 @@ class NetworkOracle():
         self._monitor: Optional[Monitor] = None
         self.data = pd.DataFrame()
 
-    def run(self, config: Config, loglvl: int = log.logging.INFO, monitor: bool = True):
+    def run(self, config: Config, loglvl: int = log.logging.INFO, monitor: bool = True) -> MetaData:
 
         # Simulator
         self._sim = Simulator(config.ts, config.te, accuracy=config.acc)
@@ -31,7 +32,8 @@ class NetworkOracle():
         log.install(self._sim)
 
         # Network
-        self._net = VLNetwork(topo=config.topo)
+        metadata = MetaData()
+        self._net = VLNetwork(topo=config.topo, metadata=metadata)
         self._net.build_route()
         if config.job.sessions is None:
             self._net.random_requests(number=config.job.session_count, attr={'send_rate': config.send_rate})
@@ -65,6 +67,8 @@ class NetworkOracle():
 
         if monitor: 
             self.data = pd.concat([self.data, self._monitor.data], ignore_index=True)
+
+        return metadata        
 
     def _gather_gen_latency(self, s, n, e):
         agg_gen_latency: float = 0.0

@@ -43,6 +43,12 @@ class Transmit:
     charlie: Optional[EprAccount] = None # points forwards
     start_time_s: Optional[float] = None
 
+    def __eq__(self, other):
+        return self.id == other.id
+
+    def __hash__(self):
+        return hash(self.id)
+
     def __repr__(self) -> str:
         alice_locA = 'xx' if self.alice is None or self.alice.locA is None else self.alice.locA.name
         alice_locB = 'xx' if self.alice is None or self.alice.locB is None else self.alice.locB.name

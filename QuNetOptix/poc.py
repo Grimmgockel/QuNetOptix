@@ -26,18 +26,19 @@ if __name__ == '__main__':
     oracle = NetworkOracle()
 
     test_jobs: List[Job] = [
-        Job.custom(sessions=[('n0', 'n2')]), # physical (no vlink)
+        #Job.custom(sessions=[('n0', 'n1')]), # physical two hops
+        #Job.custom(sessions=[('n0', 'n2')]), # physical one hop
 
-        Job.custom(sessions=[('n0', 'n11')]), # general forward
-        Job.custom(sessions=[('n11', 'n0')]), # general backward
+        #Job.custom(sessions=[('n0', 'n11')]), # general forward
+        #Job.custom(sessions=[('n11', 'n0')]), # general backward
 
-        Job.custom(sessions=[('n2', 'n11')]), # vlink start forward
-        Job.custom(sessions=[('n9', 'n0')]), # vlink start backward
-        Job.custom(sessions=[('n0', 'n9')]), # vlink end forward
+        #Job.custom(sessions=[('n2', 'n11')]), # vlink start forward
+        #Job.custom(sessions=[('n9', 'n0')]), # vlink start backward
+        #Job.custom(sessions=[('n0', 'n9')]), # vlink end forward
         Job.custom(sessions=[('n11', 'n2')]), # vlink end backward
 
-        Job.custom(sessions=[('n2', 'n9')]), # vlink only forward
-        Job.custom(sessions=[('n9', 'n2')]), # vlink only backward
+        #Job.custom(sessions=[('n2', 'n9')]), # vlink only forward
+        #Job.custom(sessions=[('n9', 'n2')]), # vlink only backward
     ]
     for job in test_jobs:
         config = Config(
@@ -49,8 +50,10 @@ if __name__ == '__main__':
             job=job,
         )
         print(config)
-        oracle.run(config, loglvl=log.logging.DEBUG, monitor=False)
-        print()
-        print()
+        meta_data = oracle.run(config, loglvl=log.logging.DEBUG, monitor=False)
+
+        for item in meta_data.result_eprs:
+            print(item)
+            print(meta_data.result_eprs[item].account)
 
 

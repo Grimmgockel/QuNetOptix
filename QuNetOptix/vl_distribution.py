@@ -45,7 +45,8 @@ class VLEnabledDistributionApp(VLApp):
     def _success(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         result_epr = self.memory.read(transmit.charlie.name)
         self.log_trans(simple_colors.green(f"successful distribution of [result_epr={result_epr}]"), transmit=transmit)
-        self.success_eprs.append(result_epr)
+        #self.success_eprs.append(result_epr)
+        self.net.metadata.result_eprs[transmit] = result_epr
 
         # clear transmission
         self.own.trans_registry[transmit.id] = None

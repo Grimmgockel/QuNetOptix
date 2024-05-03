@@ -4,6 +4,7 @@ from qns.network.network import ClassicTopology
 from qns.network.requests import Request
 from vlaware_qnode import VLAwareQNode
 from vl_routing import VLEnabledRouteAlgorithm
+from metadata import MetaData
 from vl_net_graph import VLNetGraph
 from typing import Dict, List, Optional
 import networkx as nx
@@ -14,7 +15,13 @@ from dataclasses import dataclass
 Quantum network containing special request types called superlinks, that are considered for routing as entanglement links
 '''
 class VLNetwork(QuantumNetwork):
-    def __init__(self, topo: Topology):
+    def __init__(self, topo: Topology, metadata: MetaData):
+        # init metadata
+        self.metadata: MetaData = metadata
+        self.metadata.distribution_requests = set()
+        self.metadata.vlink_requests = set()
+        self.metadata.result_eprs = {}
+
         # members
         self.name = 'vl network'
         self.requests: List[Request] = []
