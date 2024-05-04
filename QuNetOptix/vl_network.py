@@ -15,7 +15,7 @@ from dataclasses import dataclass
 Quantum network containing special request types called superlinks, that are considered for routing as entanglement links
 '''
 class VLNetwork(QuantumNetwork):
-    def __init__(self, topo: Topology, metadata: MetaData, continuous: bool):
+    def __init__(self, topo: Topology, metadata: MetaData, continuous: bool, vlink_send_rate: float):
         # init metadata
         self.metadata: MetaData = metadata
         self.metadata.distribution_requests = set()
@@ -24,6 +24,7 @@ class VLNetwork(QuantumNetwork):
 
         # members
         self.name = 'vl network'
+        self.vlink_send_rate = vlink_send_rate
         self.continuous: bool = continuous
         self.requests: List[Request] = []
         self.nodes, self.qchannels = topo.build()
@@ -35,7 +36,7 @@ class VLNetwork(QuantumNetwork):
         # TODO at this point the network graph is built, based on the graph requests for virtual links need to be produced
         # TODO one superlink per node, look at random_requests in QuantumNetwork
         self.vlinks: List[Request] = []
-        self.add_vlink(src=self.get_node('n2'), dest=self.get_node('n9'), attr={'send_rate': 2})
+        self.add_vlink(src=self.get_node('n2'), dest=self.get_node('n9'), attr={'send_rate': self.vlink_send_rate})
 
         self.physical_graph = VLNetGraph(self.nodes, self.qchannels)
         self.vlink_graph = VLNetGraph(self.nodes, self.qchannels, vlinks=self.vlinks, lvl=1)

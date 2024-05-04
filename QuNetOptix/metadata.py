@@ -14,6 +14,10 @@ class MetaData:
     '''
     This is per simulation run.
     '''
+    # data
+    send_count: int = 0
+    success_count: int = 0
+
     # Routing
     distribution_requests: Set[Request] = None
     vlink_requests: Set[Request] = None

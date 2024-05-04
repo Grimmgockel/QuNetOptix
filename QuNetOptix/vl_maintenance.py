@@ -37,6 +37,7 @@ class VLMaintenanceApp(VLApp):
         self.own.vlink_buf.put(transmit)
         src_node.vlink_buf.put(transmit)
 
+
         cchannel: Optional[ClassicChannel] = self.own.get_cchannel(src_node) 
         self.send_control(cchannel, self.own, transmit.id, "vlink", "distro")
         self.send_control(cchannel, transmit.dst, transmit.id, "vlink", "distro")

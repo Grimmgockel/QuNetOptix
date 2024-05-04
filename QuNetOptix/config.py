@@ -28,8 +28,9 @@ class Config:
     ts: int 
     te: int 
     acc: int 
-    send_rate: float 
     topo: Topology
+    vlink_send_rate: float = 1
+    send_rate: float = 1
     job: Job = None
 
     def __repr__(self):

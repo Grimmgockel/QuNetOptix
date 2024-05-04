@@ -33,7 +33,7 @@ class NetworkOracle():
 
         # Network
         metadata = MetaData()
-        self._net = VLNetwork(topo=config.topo, metadata=metadata, continuous=continuous)
+        self._net = VLNetwork(topo=config.topo, metadata=metadata, continuous=continuous, vlink_send_rate=config.vlink_send_rate)
         self._net.build_route()
         if config.job.sessions is None:
             self._net.random_requests(number=config.job.session_count, attr={'send_rate': config.send_rate})

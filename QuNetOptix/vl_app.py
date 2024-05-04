@@ -100,7 +100,7 @@ class VLApp(ABC, Application):
             raise ValueError('Session id required for new distribution')
 
         # insert the next send event
-        if self.net.continuous:
+        if self.net.continuous or self.app_name == 'maint':
             t = self._simulator.tc + Time(sec=1 / self.send_rate)
             event = func_to_event(t, self.start_ep_distribution, by=self, session_id=session_id)
             self._simulator.add_event(event)
@@ -130,7 +130,8 @@ class VLApp(ABC, Application):
             self.own.trans_registry[epr.transmit_id] = None
 
         self.log_trans(f'start new ep distribution: {transmit.src} -> {transmit.dst} \t[usage={self.memory.count}/{self.memory.capacity}]', transmit=transmit)
-        self.send_count += 1
+        if self.app_name == 'distro':
+            self.net.metadata.send_count += 1
         self.distribute_qubit_adjacent(epr.account.transmit_id)
 
     def distribute_qubit_adjacent(self, transmit_id: str):
@@ -151,7 +152,7 @@ class VLApp(ABC, Application):
         # put into queue and exit if its vlink distro
         if routing_result.vlink and self.app_name == 'distro':
             next_hop: VLAwareQNode = routing_result.next_hop_virtual
-            self.own.waiting_for_vlink_buf.put(transmit)
+            self.own.waiting_for_vlink_buf.put_nowait(transmit)
             if self.own.vlink_buf.empty() and next_hop.vlink_buf.empty():
                 self.log_trans(f'waiting for vlink on {self.own.name} to {next_hop.name}', transmit=transmit)
                 self.waiting_for_vlink = True
@@ -207,7 +208,10 @@ class VLApp(ABC, Application):
             dest=dst
         )
         transmit: Transmit = self.own.trans_registry.get(transmit_id)
-        self.log_trans(f'sending \'{control}\' to {dst.name}', transmit=transmit)
+        if control == 'vlink' and self.app_name == 'maint':
+            self.log_trans(f'sending \'{control}\' to distro app of {dst.name}', transmit=transmit)
+        else:
+            self.log_trans(f'sending \'{control}\' to {dst.name}', transmit=transmit)
         cchannel.send(classic_packet, next_hop=dst)
 
 
@@ -222,7 +226,10 @@ class VLApp(ABC, Application):
         msg = e.packet.get()
         cmd = msg['cmd']
         transmit = self.own.trans_registry[msg["transmit_id"]] 
-        self.log_trans(f'received \'{cmd}\' from {src_node.name} (as well as vlink transmit)', transmit=transmit)
+        if cmd == 'vlink':
+            self.log_trans(f'received \'{cmd}\' from maintenance app of {src_node.name}', transmit=transmit)
+        else:
+            self.log_trans(f'received \'{cmd}\' from {src_node.name}', transmit=transmit)
 
         # handle classical message
         self.control.get(cmd)(src_node, src_cchannel, transmit)
@@ -264,6 +271,7 @@ class VLApp(ABC, Application):
 
         # send next
         self.send_control(src_cchannel, src_node, transmit.id, 'next', self.app_name)
+        queue.Queue()
 
     def _next(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         if self.own == transmit.dst: # successful distribution

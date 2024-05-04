@@ -48,7 +48,7 @@ class VLEnabledDistributionApp(VLApp):
 
         # meta data
         self.net.metadata.distro_results[transmit.id].src_result = (transmit, result_epr)
-        #self.net.metadata.result_eprs_src[transmit] = result_epr
+        self.net.metadata.success_count += 1
 
         # clear transmission
         self.own.trans_registry[transmit.id] = None
@@ -56,32 +56,30 @@ class VLEnabledDistributionApp(VLApp):
 
     # # TODO abstract the swapping process, this can probably go into _swap so use classic comm
     def _vlink(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        if self.own.waiting_for_vlink_buf.empty(): # we are either at src or dst of vlink
+        if self.own.waiting_for_vlink_buf.empty() or self.own.vlink_buf.empty(): # we are either at src or dst of vlink
             return
 
-        transmit_to_teleport: Transmit = self.own.waiting_for_vlink_buf.get()
-        vlink_transmit: Transmit = self.own.vlink_buf.get()
+        try:
+            transmit_to_teleport: Transmit = self.own.waiting_for_vlink_buf.get_nowait()
+            vlink_transmit: Transmit = self.own.vlink_buf.get_nowait()
 
-        dir = 'backward' if self.own == vlink_transmit.dst else 'forward'
-        if dir == 'forward':
-            vlink_transmit.dst.vlink_buf.get() # remove from other side
-            if transmit_to_teleport.alice is None and vlink_transmit.src == transmit_to_teleport.src: # start node is vlink node forward if alice is none
-                first = self.memory.read(transmit_to_teleport.charlie.name) 
-            else:
-                first = self.memory.read(transmit_to_teleport.alice.name) 
-        if dir == 'backward':
-            if transmit_to_teleport.alice is None and vlink_transmit.dst == transmit_to_teleport.src: # start node is vlink node forward if alice is none
-                first = self.memory.read(transmit_to_teleport.charlie.name)
-            else:
-                first = self.memory.read(transmit_to_teleport.alice.name)
-            vlink_transmit.src.vlink_buf.get() # remove from other side
+            dir = 'backward' if self.own == vlink_transmit.dst else 'forward'
+            if dir == 'forward':
+                vlink_transmit.dst.vlink_buf.get_nowait() # remove from other side
+                if transmit_to_teleport.alice is None and vlink_transmit.src == transmit_to_teleport.src: # start node is vlink node forward if alice is none
+                    first = self.memory.read(transmit_to_teleport.charlie.name) 
+                else:
+                    first = self.memory.read(transmit_to_teleport.alice.name) 
+            if dir == 'backward':
+                vlink_transmit.src.vlink_buf.get_nowait() # remove from other side
+                if transmit_to_teleport.alice is None and vlink_transmit.dst == transmit_to_teleport.src: # start node is vlink node forward if alice is none
+                    first = self.memory.read(transmit_to_teleport.charlie.name)
+                else:
+                    first = self.memory.read(transmit_to_teleport.alice.name)
+        except Exception:
+            return
 
         second = self.memory.read(vlink_transmit.charlie.name)
-
-        #print(dir)
-        #print(transmit_to_teleport)
-        #print(vlink_transmit)
-
 
         # swap with vlink
         new_epr: self.entanglement_type = self.entanglement_type(first.swapping(second))

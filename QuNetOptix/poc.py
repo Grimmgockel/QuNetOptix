@@ -5,8 +5,6 @@ from config import Job
 from vl_topo import CustomDoubleStarTopology
 from typing import List
 
-# TODO make multiple links work !!! SHARED RESOURCE OF VLINKS !!!
-
 # TODO fix quantum memory issues by testing vlinks and their consumption (probably todo with vlink src not getting cleared)
 # TODO REFACTOR swapping code still duplicate
 
@@ -24,28 +22,32 @@ if __name__ == '__main__':
     oracle = NetworkOracle()
 
     test_sessions_parallel: List[Job] = [
-        #('n0', 'n11'), 
-        #('n11', 'n0'), 
+        ('n0', 'n11'), 
+        ('n11', 'n0'), 
 
-        #('n2', 'n9'), 
-        #('n9', 'n2'), 
+        ('n2', 'n9'), 
+        ('n9', 'n2'), 
 
-        ('n0', 'n11'),
-        ('n0', 'n10'),
-        ('n0', 'n7'),
-        ('n0', 'n8'),
+        #('n0', 'n11'),
+        #('n0', 'n10'),
+        #('n0', 'n7'),
+        #('n0', 'n8'),
     ]
 
     config = Config(
         ts=0,
         te=10,
         acc=1000000,
-        send_rate=1,
+        vlink_send_rate=5,
+        send_rate=0.5,
         topo=CustomDoubleStarTopology(),
         job=Job.custom(sessions=test_sessions_parallel),
     )
-    meta_data = oracle.run(config, loglvl=log.logging.DEBUG, monitor=False)
+    meta_data = oracle.run(config, loglvl=log.logging.DEBUG, continuous=False, monitor=False)
     print()
+    print(f'send: {meta_data.send_count}, success: {meta_data.success_count}')
+    print()
+
 
     for key, value in meta_data.distro_results.items():
         print('---- SUCCESSFUL DISTRIBUTION ----')
