@@ -5,7 +5,6 @@ from config import Job
 from vl_topo import CustomDoubleStarTopology
 from typing import List
 
-# TODO make overlay work
 # TODO make multiple links work !!! SHARED RESOURCE OF VLINKS !!!
 
 # TODO fix quantum memory issues by testing vlinks and their consumption (probably todo with vlink src not getting cleared)
@@ -25,8 +24,16 @@ if __name__ == '__main__':
     oracle = NetworkOracle()
 
     test_sessions_parallel: List[Job] = [
-        ('n2', 'n11'), 
-        ('n2', 'n3'), 
+        #('n0', 'n11'), 
+        #('n11', 'n0'), 
+
+        #('n2', 'n9'), 
+        #('n9', 'n2'), 
+
+        ('n0', 'n11'),
+        ('n0', 'n10'),
+        ('n0', 'n7'),
+        ('n0', 'n8'),
     ]
 
     config = Config(
@@ -37,7 +44,7 @@ if __name__ == '__main__':
         topo=CustomDoubleStarTopology(),
         job=Job.custom(sessions=test_sessions_parallel),
     )
-    meta_data = oracle.run(config, loglvl=log.logging.DEBUG, continuous=False, monitor=False)
+    meta_data = oracle.run(config, loglvl=log.logging.DEBUG, monitor=False)
     print()
 
     for key, value in meta_data.distro_results.items():

@@ -7,6 +7,9 @@ from qns.models.core import QuantumModel
 from oracle import NetworkOracle
 
 import pytest
+import signal
+import time
+import multiprocessing
 
 def result_assertions(transmit_id: str, distro_result: DistroResult):
     src_result_transmit: Transmit = distro_result.src_result[0]
@@ -55,34 +58,69 @@ test_sessions: List[Job] = [
 ]
 
 
+@pytest.mark.parametrize('continuous', [False, True])
 @pytest.mark.parametrize('job', test_sessions)
-def test_single_requests(oracle, config, job):
+def test_isolated_sessions(oracle, config, job, continuous):
     config.job = Job.custom(sessions=[job])
-    meta_data: MetaData = oracle.run(config, continuous=False, monitor=False)
-    transmit_id, distro_result = next(iter(meta_data.distro_results.items()))
-    result_assertions(transmit_id, distro_result)
+    meta_data: MetaData = oracle.run(config, continuous=continuous, monitor=False)
 
-    # TODO test remaining mem usage
-
-@pytest.mark.parametrize('job', test_sessions)
-def test_single_continuous_requests(oracle, config, job):
-    config.job = Job.custom(sessions=[job])
-    meta_data: MetaData = oracle.run(config, monitor=False)
     for transmit_id, distro_result in meta_data.distro_results.items():
         result_assertions(transmit_id, distro_result)
+        # TODO: Add assertions for remaining mem usage
 
-def test_no_overlay_parallel(oracle, config):
-    config.job = Job.custom(sessions=[
+@pytest.mark.parametrize('sessions', [
+    [
+        # no overlay parallel
         ('n2', 'n11'), 
         ('n1', 'n3'), 
         ('n8', 'n7'),
-    ])
-    meta_data: MetaData = oracle.run(config, monitor=False)
-    for transmit_id, distro_result in meta_data.distro_results.items():
-        result_assertions(transmit_id, distro_result)
-
-def test_parallel_requests(oracle, config):
-    test_sessions_parallel: List[Job] = [
+    ],
+    [
+        # overlay forwards source overlay
+        ('n0', 'n11'),
+        ('n0', 'n10'),
+        ('n0', 'n9'),
+        ('n0', 'n8'),
+        ('n0', 'n7')
+    ],
+    [
+        # overlay forwards destination overlay
+        ('n0', 'n11'),
+        ('n1', 'n11'),
+        ('n2', 'n11'),
+        ('n3', 'n11'),
+        ('n4', 'n11')
+    ],
+    [
+        # overlay backwards source overlay
+        ('n11', 'n0'),
+        ('n11', 'n1'),
+        ('n11', 'n2'),
+        ('n11', 'n3'),
+        ('n11', 'n4'),
+    ],
+    [
+        # overlay backwards destination overlay
+        ('n11', 'n0'),
+        ('n10', 'n0'),
+        ('n9', 'n0'),
+        ('n8', 'n0'),
+        ('n7', 'n0'),
+    ],
+    [
+        # overlay forwards and backwards
+        ('n0', 'n11'),
+        ('n0', 'n10'),
+        ('n11', 'n0'),
+        ('n10', 'n0')
+    ],
+    [
+        # overlay forwards and backwards vlink only
+        ('n2', 'n9'),
+        ('n9', 'n2'),
+    ],
+    [
+        # misc
         ('n0', 'n11'), # forward vlink
         ('n0', 'n3'), # overlay src with previous session
 
@@ -90,16 +128,15 @@ def test_parallel_requests(oracle, config):
         ('n11', 'n2'), # backward vlink and overlay dst with previous
 
         ('n8', 'n7'), # physical
-    ]
-
-    config.job = Job.custom(sessions=test_sessions_parallel)
-
-    '''
+    ],
+])
+def test_parallel_sessions(oracle, config, sessions):
+    config.job = Job.custom(sessions=sessions)
     meta_data: MetaData = oracle.run(config, monitor=False)
     for transmit_id, distro_result in meta_data.distro_results.items():
         result_assertions(transmit_id, distro_result)
-    '''
 
+# TODO
 def test_random_requests(oracle, config):
     pass
 

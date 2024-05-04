@@ -20,6 +20,7 @@ from metadata import MetaData, DistroResult
 
 from typing import Optional, Dict, Callable, Type, Any, Tuple
 from abc import ABC, abstractmethod
+import queue
 import uuid
 from simple_colors import *
 
@@ -81,41 +82,42 @@ class VLApp(ABC, Application):
         self.memory: QuantumMemory = self.own.memories[0]
         self.net: QuantumNetwork = self.own.network
 
-        try:
-            if self.app_name == 'maint':
-                request: Request = self.own.vlinks[0] 
-                self.net.metadata.distribution_requests.add(request)
-            elif self.app_name == 'distro':
-                request: Request = self.own.requests[0]
-                self.net.metadata.vlink_requests.add(request)
-            self.src = request.src if self.own == request.dest else None
-            self.dst = request.dest if self.own == request.src else None
-        except IndexError:
-            pass
+        requests = self.own.requests if self.app_name == 'distro' else self.own.vlinks
+        for request in requests:
+            if self.own == request.src: # i am a sender
+                # save into session registry
+                session_id = uuid.uuid4().hex 
+                self.own.session_registry[session_id] = {'src': request.src, 'dst': request.dest}
+                request.dest.session_registry[session_id] = {'src': request.src, 'dst': request.dest} 
 
-        if self.dst is not None: # sender
-            t = simulator.ts
-            self.send_rate = request.attr['send_rate'] 
-            event = func_to_event(t, self.start_ep_distribution, by=self)
-            self._simulator.add_event(event)
+                # start first ep distro
+                self.send_rate = request.attr['send_rate'] 
+                event = func_to_event(simulator.ts, self.start_ep_distribution, by=self, session_id=session_id)
+                self._simulator.add_event(event)
 
-    def start_ep_distribution(self):
+    def start_ep_distribution(self, session_id: str = None):
+        if session_id is None:
+            raise ValueError('Session id required for new distribution')
+
         # insert the next send event
         if self.net.continuous:
             t = self._simulator.tc + Time(sec=1 / self.send_rate)
-            event = func_to_event(t, self.start_ep_distribution, by=self)
+            event = func_to_event(t, self.start_ep_distribution, by=self, session_id=session_id)
             self._simulator.add_event(event)
             if self.memory._usage >= (self.memory.capacity / 2) or self.waiting_for_vlink:
                 return
 
         # generate base epr
-        epr: self.entanglement_type = self.generate_qubit(self.own, self.dst, None)
+        session_src: VLAwareQNode = self.own.session_registry[session_id]['src']
+        session_dst: VLAwareQNode = self.own.session_registry[session_id]['dst']
+        epr: self.entanglement_type = self.generate_qubit(session_src, session_dst, session_id, transmit_id=None)
 
         # save transmission
         transmit: Transmit = Transmit(
             id=epr.account.transmit_id,
-            src=self.own,
-            dst=self.dst,
+            session=session_id,
+            src=session_src,
+            dst=session_dst,
             #alice=ep,
             charlie=epr.account,
             start_time_s=self._simulator.current_time.sec
@@ -170,7 +172,7 @@ class VLApp(ABC, Application):
             raise Exception(f"{self}: No such classic channel")
 
         # generate second epr for swapping
-        forward_epr = self.generate_qubit(src=epr.account.src, dst=epr.account.dst, transmit_id=epr.account.transmit_id) # TODO this may be the culprit for memory issues
+        forward_epr = self.generate_qubit(src=epr.account.src, dst=epr.account.dst, session_id=epr.account.session_id, transmit_id=epr.account.transmit_id) # TODO this may be the culprit for memory issues
 
         # storage
         storage_success_1 = self.memory.write(epr)
@@ -185,6 +187,7 @@ class VLApp(ABC, Application):
         # bookkeeping
         updated_transmit: Transmit = Transmit(
             id=epr.account.transmit_id,
+            session=epr.account.session_id,
             src=epr.account.src,
             dst=epr.account.dst,
             alice=epr.account,
@@ -298,11 +301,12 @@ class VLApp(ABC, Application):
     def _vlink(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         pass
 
-    def generate_qubit(self, src: VLAwareQNode, dst: VLAwareQNode,
-                       transmit_id: Optional[str] = None) -> Tuple[QuantumModel, EprAccount]:
+    def generate_qubit(self, src: VLAwareQNode, dst: VLAwareQNode, session_id: str,
+                       transmit_id: Optional[str] = None) -> QuantumModel:
         epr = self.entanglement_type(name=uuid.uuid4().hex)
         epr.account = EprAccount(
             transmit_id=transmit_id if transmit_id is not None else uuid.uuid4().hex,
+            session_id=session_id,
             name=epr.name,
             src = src,
             dst = dst,

@@ -16,6 +16,7 @@ class VLAwareQNode(QNode):
     def __init__(self, name: str = None, apps: List[Application] = None):
         super().__init__(name, apps)
         self.trans_registry: Dict[str, Transmit] = {}
+        self.session_registry: Dict[str, Dict[str, VLAwareQNode]] = {} # one node can manage multiple src-dst sessions, save with transmit_id
         self.has_vlink = False
         self.vlinks: List[Request] = []
         self.vlink_buf = queue.Queue() # TODO shared resource
@@ -28,6 +29,7 @@ class VLAwareQNode(QNode):
 @dataclass
 class EprAccount:
     transmit_id: str = None
+    session_id: str = None
     name: str = None
     src: VLAwareQNode = None # for retrieving transmit data when physically transmitting qubits
     dst: VLAwareQNode = None
@@ -37,6 +39,7 @@ class EprAccount:
 @dataclass
 class Transmit:
     id: str
+    session: str
     src: VLAwareQNode
     dst: VLAwareQNode
     alice: Optional[EprAccount] = None # points backward 
