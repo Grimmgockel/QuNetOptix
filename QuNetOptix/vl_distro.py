@@ -56,8 +56,8 @@ class VLEnabledDistributionApp(VLApp):
 
     # # TODO abstract the swapping process, this can probably go into _swap so use classic comm
     def _vlink(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        if self.own.waiting_for_vlink_buf.empty() or self.own.vlink_buf.empty(): # we are either at src or dst of vlink
-            return
+        if self.own.waiting_for_vlink_buf.empty() or transmit is None: 
+            raise Exception()
 
         try:
             transmit_to_teleport: Transmit = self.own.waiting_for_vlink_buf.get_nowait()
@@ -65,19 +65,22 @@ class VLEnabledDistributionApp(VLApp):
 
             dir = 'backward' if self.own == vlink_transmit.dst else 'forward'
             if dir == 'forward':
-                vlink_transmit.dst.vlink_buf.get_nowait() # remove from other side
+                other_side: Transmit = vlink_transmit.dst.vlink_buf.get_nowait() # remove from other side
                 if transmit_to_teleport.alice is None and vlink_transmit.src == transmit_to_teleport.src: # start node is vlink node forward if alice is none
                     first = self.memory.read(transmit_to_teleport.charlie.name) 
                 else:
                     first = self.memory.read(transmit_to_teleport.alice.name) 
             if dir == 'backward':
-                vlink_transmit.src.vlink_buf.get_nowait() # remove from other side
+                other_side: Transmit = vlink_transmit.src.vlink_buf.get_nowait() # remove from other side
                 if transmit_to_teleport.alice is None and vlink_transmit.dst == transmit_to_teleport.src: # start node is vlink node forward if alice is none
                     first = self.memory.read(transmit_to_teleport.charlie.name)
                 else:
                     first = self.memory.read(transmit_to_teleport.alice.name)
         except Exception:
             return
+
+        if other_side.id != vlink_transmit.id:
+            raise ValueError("Removed wrong transmit from other side while using vlink")
 
         second = self.memory.read(vlink_transmit.charlie.name) # TODO this is sometimes none with really scarce memory resources
 
@@ -102,22 +105,23 @@ class VLEnabledDistributionApp(VLApp):
         forward_node_app: VLEnabledDistributionApp = forward_node.get_apps(VLEnabledDistributionApp)[0]
 
         # update forward and backward nodes
-        forward_node_app.set_alice(new_epr)
-        backward_node_app.set_charlie(new_epr)
-
-        # clear vlink transmission, vlink is consumed
-        #vlink_transmit.dst.trans_registry[vlink_transmit.id]= None
-        #vlink_transmit.src.trans_registry[vlink_transmit.id]= None
-        self.waiting_for_vlink = False
-
+        forward_node_app.set_alice(new_epr, first, second, used_vlink=vlink_transmit)
+        backward_node_app.set_charlie(new_epr, first, second, used_vlink=vlink_transmit)
         self.log_trans(f'performed swap using vlink (({backward_node.name}, {self.own.name}) - ({self.own.name}, {forward_node.name})) -> ({backward_node.name}, {forward_node.name})', transmit=transmit_to_teleport)
+        self.log_trans(f'consumed: {first} and {second} | new: {new_epr}', transmit=transmit_to_teleport)
 
-        # instruct maintenance to clear memory
-        #print(vlink_transmit)
-        #cchannel: Optional[ClassicChannel] = self.own.get_cchannel(src_node) 
-        #self.send_control(cchannel, src_node, vlink_transmit.id, "vlink", "vlink maintenance")
+        # clean up after vlink usage
+        self.memory.read(transmit_to_teleport.charlie.name) # forward ep no longer of use because of vlink
+        #node_to_clear = vlink_transmit.src if self.own == vlink_transmit.dst else vlink_transmit.dst 
+        #node_to_clear_app: VLEnabledDistributionApp = node_to_clear.get_apps(VLEnabledDistributionApp)[0] # clear other node of vlink
+        #node_to_clear_app.memory.read(second.name)
+        vlink_transmit.dst.trans_registry[vlink_transmit.id]= None
+        vlink_transmit.src.trans_registry[vlink_transmit.id]= None
+        self.waiting_for_vlink = False
 
         # treat this same way as physical qubit transmission by sending recvqubitevent
         send_event = RecvQubitOverVL(self._simulator.current_time, qubit=new_epr, src=backward_node, dest=forward_node, vlink_transmit_id=vlink_transmit.id, by=self) # no delay on vlinks, just use current time
         self._simulator.add_event(send_event)
+
+        # TODO send vlink to src node and clean second.name there
 

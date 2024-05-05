@@ -66,6 +66,12 @@ class NetworkOracle():
         self._sim.run()
         metadata.remaining_memory_usage = sum(1 for node in self._net.nodes for app in node.apps if app.memory._usage > 0)
 
+        for node in self._net.nodes:
+            for app in node.apps:
+                for entry in app.memory._storage:
+                    if entry is not None:
+                        print(f'{app.own} ({app}): {entry}\tsrc={entry.account.src};dst={entry.account.dst}')
+
         if monitor: 
             self.data = pd.concat([self.data, self._monitor.data], ignore_index=True)
 

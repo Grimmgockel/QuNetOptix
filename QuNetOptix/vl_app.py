@@ -123,8 +123,6 @@ class VLApp(ABC, Application):
         # generate base epr
         session_src: VLAwareQNode = self.own.session_registry[session_id]['src']
         session_dst: VLAwareQNode = self.own.session_registry[session_id]['dst']
-        if session_src.name == 'n2' and session_dst.name == 'n9' and self.app_name =='distro':
-            print("HALJAL:DFKJDAS:LFK")
         epr: self.entanglement_type = self.generate_qubit(session_src, session_dst, session_id, transmit_id=None)
 
         # save transmission
@@ -138,15 +136,16 @@ class VLApp(ABC, Application):
             start_time_s=self._simulator.current_time.sec
         )
         self.own.trans_registry[epr.account.transmit_id] = transmit
+        self.log_trans(f'start new ep distribution: {transmit.src} -> {transmit.dst} \t[{epr}]', transmit=transmit)
 
         store_success = self.memory.write(epr)
         if not store_success:
             self.memory.read(epr)
             self.own.trans_registry[epr.account.transmit_id] = None
-            self.log_trans(f'failed starting new distribution {transmit.src} -> {transmit.dst} \t[usage={self.memory.count}/{self.memory.capacity}]', transmit=transmit)
+            self.log_trans(f'failed starting new distribution {transmit.src} -> {transmit.dst} \t[{epr}]', transmit=transmit)
             return
+        self.log_trans(f"stored qubit {epr}", transmit=transmit)
 
-        self.log_trans(f'start new ep distribution: {transmit.src} -> {transmit.dst} \t[usage={self.memory.count}/{self.memory.capacity}]', transmit=transmit)
         if self.app_name == 'distro':
             self.net.metadata.send_count += 1
         self.distribute_qubit_adjacent(epr.account.transmit_id)
@@ -171,13 +170,13 @@ class VLApp(ABC, Application):
             next_hop: VLAwareQNode = routing_result.next_hop_virtual
             self.own.waiting_for_vlink_buf.put_nowait(transmit)
             if self.own.vlink_buf.empty() and next_hop.vlink_buf.empty():
-                self.log_trans(f'waiting for vlink on {self.own.name} to {next_hop.name}', transmit=transmit)
+                self.log_trans(f'waiting for vlink on {self.own.name} to {next_hop.name}\t[{epr}]', transmit=transmit)
                 self.waiting_for_vlink = True
                 return
             self._vlink(next_hop, None, None)
             return
 
-        self.log_trans(f'physical transmission of qubit to {next_hop}', transmit=transmit)
+        self.log_trans(f'physical transmission of qubit to {next_hop}\t[{epr}]', transmit=transmit)
         qchannel: QuantumChannel = self.own.get_qchannel(next_hop)
         if qchannel is None:
             raise Exception(f"{self}: No such quantum channel.")
@@ -201,7 +200,7 @@ class VLApp(ABC, Application):
             )
             updated_transmit.alice.locB = self.own
             self.own.trans_registry[epr.account.transmit_id] = updated_transmit
-            self.log_trans(f"received qubit from {src_node.name}", transmit=updated_transmit)
+            self.log_trans(f"received qubit from {src_node.name}\t[{epr}]", transmit=updated_transmit)
 
             storage_success_1 = self.memory.write(epr)
             if not storage_success_1:
@@ -232,7 +231,7 @@ class VLApp(ABC, Application):
         )
         updated_transmit.alice.locB = self.own
         self.own.trans_registry[epr.account.transmit_id] = updated_transmit
-        self.log_trans(f"received qubit from {src_node.name}", transmit=updated_transmit)
+        self.log_trans(f"received qubit from {src_node.name}\t[{epr}]", transmit=updated_transmit)
 
         # storage 
         storage_success_1 = self.memory.write(epr)
@@ -256,12 +255,8 @@ class VLApp(ABC, Application):
             src=self.own, 
             dest=dst
         )
-        if control == 'vlink' and self.app_name == 'maint':
-            self.log_trans(f'sending \'{control}\' to distro app of {dst.name}', transmit=transmit)
-        else:
-            self.log_trans(f'sending \'{control}\' to {dst.name}', transmit=transmit)
+        self.log_trans(f'sending \'{control}\' to {dst.name}', transmit=transmit)
         cchannel.send(classic_packet, next_hop=dst)
-
 
     def receive_control(self, node: VLAwareQNode, e: RecvClassicPacket):
         # get sender and channel
@@ -274,17 +269,14 @@ class VLApp(ABC, Application):
         msg = e.packet.get()
         cmd = msg['cmd']
         transmit = self.own.trans_registry[msg["transmit_id"]] 
-        if cmd == 'vlink':
-            self.log_trans(f'received \'{cmd}\' from maintenance app of {src_node.name}', transmit=transmit)
-        else:
-            self.log_trans(f'received \'{cmd}\' from {src_node.name}', transmit=transmit)
+
+        self.log_trans(f'received \'{cmd}\' from {src_node.name}', transmit=transmit)
 
         # handle classical message
         self.control.get(cmd)(src_node, src_cchannel, transmit)
 
     def _swap(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         if self.own != transmit.src: # dont swap for first node
-
 
             # swap and manage new epr
             first: self.entanglement_type = self.memory.read(transmit.alice.name)
@@ -309,17 +301,17 @@ class VLApp(ABC, Application):
             forward_node_app: self.entanglement_type = forward_node.get_apps(type(self))[0]
 
             # set alicea and charlie after swap
-            backward_node_app.set_charlie(new_epr)
-            forward_node_app.set_alice(new_epr)
+            backward_node_app.set_charlie(new_epr, first, second)
+            forward_node_app.set_alice(new_epr, first, second)
 
             # clear for repeater node
-            #self.own.trans_registry[transmit.id] = None
+            self.own.trans_registry[transmit.id] = None
 
             self.log_trans(f'performed swap (({backward_node.name}, {self.own.name}) - ({self.own.name}, {forward_node.name})) -> ({backward_node.name}, {forward_node.name})', transmit=transmit)
+            self.log_trans(f'consumed: {first} and {second} | new: {new_epr}', transmit=transmit)
 
         # send next
         self.send_control(src_cchannel, src_node, transmit, 'next', self.app_name)
-        queue.Queue()
 
     def _next(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         if self.own == transmit.dst: # successful distribution
@@ -327,22 +319,24 @@ class VLApp(ABC, Application):
 
             # meta data
             if self.app_name == 'distro':
-                result_epr: QuantumModel = self.memory.get(transmit.alice.name)
+                result_epr: QuantumModel = self.memory.read(transmit.alice.name)
                 self.net.metadata.distro_results[transmit.id] = DistroResult(dst_result=(transmit, result_epr))
 
             self.send_control(cchannel, transmit.src, transmit, 'success', self.app_name)
-
             return
 
         self.distribute_qubit_adjacent(transmit.id)
 
     def _revoke(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         # revoke transmission fully
-        self.log_trans(f'cleaning memory', transmit=transmit)
         if transmit.alice is not None:
-            self.memory.read(transmit.alice.name) 
+            epr = self.memory.read(transmit.alice.name)
+            if epr is not None:
+                self.log_trans(f'revoked qubit {epr}', transmit=transmit)
         if transmit.charlie is not None:
-            self.memory.read(transmit.charlie.name) 
+            epr = self.memory.read(transmit.charlie.name)
+            if epr is not None:
+                self.log_trans(f'revoked qubit {epr}', transmit=transmit)
         self.own.trans_registry[transmit.id] = None
         if self.own != transmit.src: # recurse back to source node
             cchannel = self.own.get_cchannel(transmit.src)
@@ -371,29 +365,39 @@ class VLApp(ABC, Application):
         )
         return epr
 
-    def set_charlie(self, epr: QuantumModel):
+    def set_charlie(self, epr: QuantumModel, first_old: QuantumModel, second_old: QuantumModel, used_vlink: Transmit = None):
         transmit = self.own.trans_registry.get(epr.account.transmit_id)
         if transmit is None:
             return
 
         transmit.charlie = epr.account
-        self.memory.read(transmit.charlie.name) # read out old alice
+
+        # cleanup
+        self.memory.read(first_old.name) # read out old alice
+        self.memory.read(second_old.name) # read out old alice
         self.memory.read(epr.account.name) # read out new epr name before writing
+
+        # safe new epr
         self.memory.write(epr)
 
-    def set_alice(self, epr: QuantumModel):
+    def set_alice(self, epr: QuantumModel, first_old: QuantumModel, second_old: QuantumModel, used_vlink: Transmit = None):
         transmit = self.own.trans_registry.get(epr.account.transmit_id)
         if transmit is None:
             return
 
         transmit.alice = epr.account
-        self.memory.read(transmit.alice.name) # read out old alice
+
+        # cleanup
+        self.memory.read(first_old.name) # read out old alice
+        self.memory.read(second_old.name) # read out old alice
         self.memory.read(epr.account.name) # read out new epr name before writing
+
+        # safe new epr
         self.memory.write(epr)
 
     def log_trans(self, str: str, transmit: Transmit = None):
         if transmit is None:
-            log.debug(f'\t[{self.own.name}]\t{self.app_name}\tNone:\t{str}')
+            log.debug(f'\t[{self.own.name}]\t{self.memory._usage}/{self.memory.capacity}\t{self.app_name}\tNone:\t{str}')
         else:
-            log.debug(f'\t[{self.own.name}]\t{self.app_name}\t{transmit}:\t{str}')
+            log.debug(f'\t[{self.own.name}]\t{self.memory._usage}/{self.memory.capacity}\t{self.app_name}\t{transmit}:\t{str}')
 

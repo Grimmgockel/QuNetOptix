@@ -27,6 +27,7 @@ if __name__ == '__main__':
 
         ('n0', 'n11'),
         ('n11', 'n0'),
+
         ('n0', 'n10'),
         ('n0', 'n7'),
         ('n0', 'n8'),
@@ -42,7 +43,7 @@ if __name__ == '__main__':
         job=Job.custom(sessions=test_sessions_1),
     )
     meta_data = oracle.run(config, loglvl=log.logging.DEBUG, continuous_distro=False, n_vlinks=7, monitor=False)
-    print()
+    print(f'remaining mem usage: {meta_data.remaining_memory_usage}')
     print(f'send: {meta_data.send_count}, success: {meta_data.success_count}')
     print()
 

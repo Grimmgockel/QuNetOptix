@@ -19,6 +19,7 @@ from typing import Optional, Type
 import uuid
 
 import simple_colors
+import random
 
 '''
 Node application for maintaining selected virtual links 
@@ -34,13 +35,26 @@ class VLMaintenanceApp(VLApp):
     def _success(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         self.log_trans(simple_colors.magenta(f'established vlink ({self.own.name}, {src_node.name})'), transmit=transmit)
 
-        self.own.vlink_buf.put(transmit)
-        src_node.vlink_buf.put(transmit)
-
+        self.own.vlink_buf.put_nowait(transmit)
+        src_node.vlink_buf.put_nowait(transmit)
 
         cchannel: Optional[ClassicChannel] = self.own.get_cchannel(src_node) 
-        self.send_control(cchannel, self.own, transmit, "vlink", "distro")
-        self.send_control(cchannel, transmit.dst, transmit, "vlink", "distro")
+
+        src_waiting = not self.own.waiting_for_vlink_buf.empty()
+        dst_waiting = not transmit.dst.waiting_for_vlink_buf.empty()
+
+        # decide where to notify about new vlink
+        if src_waiting and not dst_waiting:
+            tgt = self.own
+        elif not src_waiting and dst_waiting:
+            tgt = transmit.dst
+        elif src_waiting and dst_waiting:
+            # flip a coin
+            coinflip_result =  random.choice([True, False])
+            tgt = self.own if coinflip_result else transmit.dst
+
+        if tgt is not None:
+            self.send_control(cchannel, tgt, transmit, "vlink", "distro") 
 
     def _vlink(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         # TODO clear vlink on this side

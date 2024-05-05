@@ -19,8 +19,9 @@ class VLAwareQNode(QNode):
         self.session_registry: Dict[str, Dict[str, VLAwareQNode]] = {} # one node can manage multiple src-dst sessions, save with transmit_id
         self.has_vlink = False
         self.vlinks: List[Request] = []
-        self.vlink_buf = queue.Queue() # TODO shared resource
-        self.waiting_for_vlink_buf = queue.Queue() # TODO shared resource
+
+        self.vlink_buf = queue.Queue() # shared resource
+        self.waiting_for_vlink_buf = queue.Queue() # shared resource
 
     def add_vlink(self, vlink: Request):
         self.vlinks.append(vlink)
@@ -59,3 +60,4 @@ class Transmit:
         charlie_locB = 'xx' if self.charlie is None or self.charlie.locB is None else self.charlie.locB.name
 
         return f"TRANSMIT[id={self.id};src={self.src.name};dst={self.dst.name};alice=({alice_locA},{alice_locB});charlie({charlie_locA},{charlie_locB})]"
+
