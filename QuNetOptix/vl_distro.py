@@ -79,7 +79,7 @@ class VLEnabledDistributionApp(VLApp):
         except Exception:
             return
 
-        second = self.memory.read(vlink_transmit.charlie.name)
+        second = self.memory.read(vlink_transmit.charlie.name) # TODO this is sometimes none with really scarce memory resources
 
         # swap with vlink
         new_epr: self.entanglement_type = self.entanglement_type(first.swapping(second))

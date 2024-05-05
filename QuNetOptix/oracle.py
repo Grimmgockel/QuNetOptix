@@ -22,7 +22,7 @@ class NetworkOracle():
         self._monitor: Optional[Monitor] = None
         self.data = pd.DataFrame()
 
-    def run(self, config: Config, loglvl: int = log.logging.INFO, continuous: bool = True, monitor: bool = True) -> MetaData:
+    def run(self, config: Config, loglvl: int = log.logging.INFO, continuous_distro: bool = True, n_vlinks: Optional[int] = None, monitor: bool = True) -> MetaData:
 
         # Simulator
         self._sim = Simulator(config.ts, config.te, accuracy=config.acc)
@@ -33,7 +33,7 @@ class NetworkOracle():
 
         # Network
         metadata = MetaData()
-        self._net = VLNetwork(topo=config.topo, metadata=metadata, continuous=continuous, vlink_send_rate=config.vlink_send_rate)
+        self._net = VLNetwork(topo=config.topo, metadata=metadata, continuous_distro=continuous_distro, n_vlinks=n_vlinks, vlink_send_rate=config.vlink_send_rate)
         self._net.build_route()
         if config.job.sessions is None:
             self._net.random_requests(number=config.job.session_count, attr={'send_rate': config.send_rate})

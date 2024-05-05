@@ -45,6 +45,7 @@ class VLApp(ABC, Application):
         self.memory: QuantumMemory = None 
         self.net: QuantumNetwork = None 
         self.waiting_for_vlink: bool = False # always false for maintenance app
+        self.vlink_cnt: int = 0
 
         # ep info can be vlink or standard ep
         self.src: Optional[VLAwareQNode] = None
@@ -95,21 +96,35 @@ class VLApp(ABC, Application):
                 event = func_to_event(simulator.ts, self.start_ep_distribution, by=self, session_id=session_id)
                 self._simulator.add_event(event)
 
+    def schedule_next_ep_distribution(self, session_id: str):
+        t = self._simulator.tc + Time(sec=1 / self.send_rate)
+        event = func_to_event(t, self.start_ep_distribution, by=self, session_id=session_id)
+        self._simulator.add_event(event)
+
     def start_ep_distribution(self, session_id: str = None):
         if session_id is None:
             raise ValueError('Session id required for new distribution')
 
-        # insert the next send event
-        if self.net.continuous or self.app_name == 'maint':
-            t = self._simulator.tc + Time(sec=1 / self.send_rate)
-            event = func_to_event(t, self.start_ep_distribution, by=self, session_id=session_id)
-            self._simulator.add_event(event)
-            if self.waiting_for_vlink:
-                return
+        if self.app_name == 'maint':
+            if self.net.n_vlinks is not None: # only distribute n_vlinks virtual links (for testing purposes)
+                if self.vlink_cnt >= self.net.n_vlinks:
+                    return
+                self.vlink_cnt += 1
+            self.schedule_next_ep_distribution(session_id)
+
+        elif self.app_name == 'distro':
+            if self.net.continuous_distro: # one distribution per session
+                if self.waiting_for_vlink:
+                    return # don't send new when there is an active distribution on that session
+                self.schedule_next_ep_distribution(session_id)
+        else:
+            raise Exception("Unknown app name")
 
         # generate base epr
         session_src: VLAwareQNode = self.own.session_registry[session_id]['src']
         session_dst: VLAwareQNode = self.own.session_registry[session_id]['dst']
+        if session_src.name == 'n2' and session_dst.name == 'n9' and self.app_name =='distro':
+            print("HALJAL:DFKJDAS:LFK")
         epr: self.entanglement_type = self.generate_qubit(session_src, session_dst, session_id, transmit_id=None)
 
         # save transmission
@@ -128,6 +143,8 @@ class VLApp(ABC, Application):
         if not store_success:
             self.memory.read(epr)
             self.own.trans_registry[epr.account.transmit_id] = None
+            self.log_trans(f'failed starting new distribution {transmit.src} -> {transmit.dst} \t[usage={self.memory.count}/{self.memory.capacity}]', transmit=transmit)
+            return
 
         self.log_trans(f'start new ep distribution: {transmit.src} -> {transmit.dst} \t[usage={self.memory.count}/{self.memory.capacity}]', transmit=transmit)
         if self.app_name == 'distro':
@@ -171,6 +188,35 @@ class VLApp(ABC, Application):
         cchannel: ClassicChannel = self.own.get_cchannel(src_node)
         if cchannel is None:
             raise Exception(f"{self}: No such classic channel")
+
+        if self.own == epr.account.dst:
+            # bookkeeping
+            updated_transmit: Transmit = Transmit(
+                id=epr.account.transmit_id,
+                session=epr.account.session_id,
+                src=epr.account.src,
+                dst=epr.account.dst,
+                alice=epr.account,
+                #charlie=forward_epr.account,
+            )
+            updated_transmit.alice.locB = self.own
+            self.own.trans_registry[epr.account.transmit_id] = updated_transmit
+            self.log_trans(f"received qubit from {src_node.name}", transmit=updated_transmit)
+
+            storage_success_1 = self.memory.write(epr)
+            if not storage_success_1:
+                # revoke distribution
+                self.memory.read(epr)
+                self.send_control(cchannel, src_node, updated_transmit, 'revoke', self.app_name)
+                self.own.trans_registry[updated_transmit.id] = None # clear
+                return
+
+            self.log_trans(f"stored qubit {epr.name}", transmit=updated_transmit)
+
+            # if storage successful
+            self.send_control(cchannel, src_node, updated_transmit, 'swap', self.app_name)
+            return
+
 
         # generate second epr for swapping
         forward_epr = self.generate_qubit(src=epr.account.src, dst=epr.account.dst, session_id=epr.account.session_id, transmit_id=epr.account.transmit_id) # TODO this may be the culprit for memory issues

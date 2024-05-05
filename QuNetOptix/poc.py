@@ -21,18 +21,16 @@ from typing import List
 if __name__ == '__main__': 
     oracle = NetworkOracle()
 
-    test_sessions_parallel: List[Job] = [
-        ('n0', 'n11'), 
-        ('n11', 'n0'), 
-
+    test_sessions_1: List[Job] = [
         ('n2', 'n9'), 
         ('n9', 'n2'), 
 
-        #('n0', 'n11'),
-        #('n0', 'n10'),
-        #('n0', 'n7'),
-        #('n0', 'n8'),
-    ]
+        ('n0', 'n11'),
+        ('n11', 'n0'),
+        ('n0', 'n10'),
+        ('n0', 'n7'),
+        ('n0', 'n8'),
+    ] # alle ausser 2 - 9 
 
     config = Config(
         ts=0,
@@ -41,9 +39,9 @@ if __name__ == '__main__':
         vlink_send_rate=5,
         send_rate=5,
         topo=CustomDoubleStarTopology(memory_args=[{'capacity': 100}]),
-        job=Job.custom(sessions=test_sessions_parallel),
+        job=Job.custom(sessions=test_sessions_1),
     )
-    meta_data = oracle.run(config, loglvl=log.logging.DEBUG, continuous=True, monitor=False)
+    meta_data = oracle.run(config, loglvl=log.logging.DEBUG, continuous_distro=False, n_vlinks=7, monitor=False)
     print()
     print(f'send: {meta_data.send_count}, success: {meta_data.success_count}')
     print()

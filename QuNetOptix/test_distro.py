@@ -141,6 +141,9 @@ def test_parallel_sessions(oracle, config, sessions):
     for transmit_id, distro_result in meta_data.distro_results.items():
         result_assertions(transmit_id, distro_result)
 
+#def test_mem_clearance(oracle, config):
+    #config.
+
 # TODO
 def test_random_requests(oracle, config):
     pass
