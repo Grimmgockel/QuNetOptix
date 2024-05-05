@@ -5,6 +5,7 @@ from config import Job
 from vl_topo import CustomDoubleStarTopology
 from typing import List
 
+# TODO vlink onlys are:w
 # TODO fix quantum memory issues by testing vlinks and their consumption (probably todo with vlink src not getting cleared) -> if test cases can run multiple parallels WITH a long sim time then we good
 # TODO REFACTOR swapping code still duplicate
 
@@ -31,20 +32,26 @@ if __name__ == '__main__':
         ('n0', 'n10'),
         ('n0', 'n7'),
         ('n0', 'n8'),
-    ] # alle ausser 2 - 9 
+    ] 
+
+    test_sessions_2: List[Job] = [
+        ('n2', 'n11'), 
+        ('n1', 'n3'), 
+        ('n8', 'n7'),
+    ]
 
     config = Config(
         ts=0,
-        te=10,
+        te=200,
         acc=1000000,
-        vlink_send_rate=5,
-        send_rate=5,
-        topo=CustomDoubleStarTopology(memory_args=[{'capacity': 100}]),
-        job=Job.custom(sessions=test_sessions_1),
+        vlink_send_rate=1,
+        send_rate=1,
+        topo=CustomDoubleStarTopology(),
+        job=Job.custom(sessions=test_sessions_2),
     )
-    meta_data = oracle.run(config, loglvl=log.logging.DEBUG, continuous_distro=False, n_vlinks=7, monitor=False)
+    meta_data = oracle.run(config, loglvl=log.logging.DEBUG, continuous_distro=False, n_vlinks=len(test_sessions_2), monitor=False)
     print(f'remaining mem usage: {meta_data.remaining_memory_usage}')
-    print(f'send: {meta_data.send_count}, success: {meta_data.success_count}')
+    print(f'send: {meta_data.send_count}, success: {meta_data.success_count}, vlinks: {meta_data.vlink_count}')
     print()
 
 

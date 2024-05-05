@@ -17,6 +17,7 @@ class MetaData:
     # data
     send_count: int = 0
     success_count: int = 0
+    vlink_count: int = 0
 
     # Routing
     distribution_requests: Set[Request] = None

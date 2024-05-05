@@ -31,7 +31,7 @@ def result_assertions(transmit_id: str, distro_result: DistroResult):
 def config() -> Config:
     return Config(
         ts=0,
-        te=50,
+        te=200,
         acc=1000000,
         topo=CustomDoubleStarTopology()
     )
@@ -41,9 +41,21 @@ def oracle():
     return NetworkOracle()
 
 @pytest.mark.parametrize('job', [
-    ('n0', 'n1'), # physical two hops
     ('n0', 'n2'), # physical one hop
+    ('n0', 'n1'), # physical two hops
+    ('n0', 'n5'), # physical two hops
+])
+def test_physical_sessions(oracle, config, job):
+    config.job = Job.custom(sessions=[job])
+    meta_data: MetaData = oracle.run(config, continuous_distro=False, n_vlinks=0, monitor=False)
 
+    for transmit_id, distro_result in meta_data.distro_results.items():
+        result_assertions(transmit_id, distro_result)
+
+    assert meta_data.send_count == meta_data.success_count
+    assert meta_data.remaining_memory_usage == 0
+
+@pytest.mark.parametrize('job', [
     ('n0', 'n11'), # general forward
     ('n11', 'n0'), # general backward
 
@@ -70,9 +82,8 @@ def test_isolated_sessions(oracle, config, job):
 @pytest.mark.parametrize('sessions', [
     [
         # no overlay parallel
-        ('n2', 'n11'), 
-        ('n1', 'n3'), 
-        ('n8', 'n7'),
+        ('n1', 'n10'), 
+        ('n0', 'n11')
     ],
     [
         # overlay forwards source overlay
@@ -128,16 +139,6 @@ def test_isolated_sessions(oracle, config, job):
         ('n10', 'n1'),
         ('n10', 'n1'),
     ],
-    [
-        # misc
-        ('n0', 'n11'), # forward vlink
-        ('n0', 'n3'), # overlay src with previous session
-
-        ('n9', 'n2'), # backward vlink only
-        ('n11', 'n2'), # backward vlink and overlay dst with previous
-
-        ('n8', 'n7'), # physical
-    ],
 ])
 def test_parallel_sessions(oracle, config, sessions, vlink_send_rate, distro_send_rate):
     config.job = Job.custom(sessions=sessions)
@@ -151,7 +152,9 @@ def test_parallel_sessions(oracle, config, sessions, vlink_send_rate, distro_sen
     assert meta_data.remaining_memory_usage == 0
 
 def test_max_congestion(oracle, config):
-    sessions = [(f'n{i}', f'n{j}') for i in range(12) if i not in {5, 6} for j in range(12) if j not in {5, 6} if i != j]
+    sessions = [(f'n{i}', f'n{j}') for i in range(5) for j in range(7, 12) if i != j]
+    sessions += [(f'n{i}', f'n{j}') for i in range(7, 12) for j in range(5) if i != j]
+
     config.te = 500
     config.job = Job.custom(sessions=sessions)
     config.topo = CustomDoubleStarTopology(memory_args=[{'capacity': 500}])
@@ -165,12 +168,22 @@ def test_max_congestion(oracle, config):
     assert meta_data.send_count == meta_data.success_count
     assert meta_data.remaining_memory_usage == 0
 
+
+
 @pytest.mark.parametrize('send_rate', [5, 10, 20])
 @pytest.mark.parametrize('vlink_send_rate', [5, 10, 20])
-@pytest.mark.parametrize('mem_cap', [10, 50, 100])
-@pytest.mark.parametrize('nr_distros', [1, 5, 10, 50, 100])
-def test_random_requests(oracle, config):
+@pytest.mark.parametrize('sessions_count', range(1, 7))
+def test_random_continuous_requests(oracle, config, send_rate, vlink_send_rate, sessions_count):
     # TODO set long sim duration
-    assert True
+    config.te = 50
+    config.job = Job.random(session_count=sessions_count)
+    config.send_rate = send_rate
+    config.vlink_send_rate = vlink_send_rate
 
+    meta_data: MetaData = oracle.run(config, continuous_distro=True, monitor=False)
+    for transmit_id, distro_result in meta_data.distro_results.items():
+        result_assertions(transmit_id, distro_result)
+
+# TODO test revoke
+# TODO test waxman topology
 

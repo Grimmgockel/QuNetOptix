@@ -34,6 +34,7 @@ class VLMaintenanceApp(VLApp):
 
     def _success(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         self.log_trans(simple_colors.magenta(f'established vlink ({self.own.name}, {src_node.name})'), transmit=transmit)
+        self.net.metadata.vlink_count += 1
 
         self.own.vlink_buf.put_nowait(transmit)
         src_node.vlink_buf.put_nowait(transmit)
@@ -44,6 +45,7 @@ class VLMaintenanceApp(VLApp):
         dst_waiting = not transmit.dst.waiting_for_vlink_buf.empty()
 
         # decide where to notify about new vlink
+        tgt: Optional[VLAwareQNode] = None
         if src_waiting and not dst_waiting:
             tgt = self.own
         elif not src_waiting and dst_waiting:
