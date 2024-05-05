@@ -5,7 +5,7 @@ from config import Job
 from vl_topo import CustomDoubleStarTopology
 from typing import List
 
-# TODO fix quantum memory issues by testing vlinks and their consumption (probably todo with vlink src not getting cleared)
+# TODO fix quantum memory issues by testing vlinks and their consumption (probably todo with vlink src not getting cleared) -> if test cases can run multiple parallels WITH a long sim time then we good
 # TODO REFACTOR swapping code still duplicate
 
 # TODO entanglement tracker (observer pattern) -> animation??
@@ -39,11 +39,11 @@ if __name__ == '__main__':
         te=10,
         acc=1000000,
         vlink_send_rate=5,
-        send_rate=0.5,
-        topo=CustomDoubleStarTopology(),
+        send_rate=5,
+        topo=CustomDoubleStarTopology(memory_args=[{'capacity': 100}]),
         job=Job.custom(sessions=test_sessions_parallel),
     )
-    meta_data = oracle.run(config, loglvl=log.logging.DEBUG, continuous=False, monitor=False)
+    meta_data = oracle.run(config, loglvl=log.logging.DEBUG, continuous=True, monitor=False)
     print()
     print(f'send: {meta_data.send_count}, success: {meta_data.success_count}')
     print()

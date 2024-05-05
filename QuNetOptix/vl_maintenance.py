@@ -39,8 +39,8 @@ class VLMaintenanceApp(VLApp):
 
 
         cchannel: Optional[ClassicChannel] = self.own.get_cchannel(src_node) 
-        self.send_control(cchannel, self.own, transmit.id, "vlink", "distro")
-        self.send_control(cchannel, transmit.dst, transmit.id, "vlink", "distro")
+        self.send_control(cchannel, self.own, transmit, "vlink", "distro")
+        self.send_control(cchannel, transmit.dst, transmit, "vlink", "distro")
 
     def _vlink(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         # TODO clear vlink on this side
