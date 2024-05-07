@@ -22,7 +22,7 @@ class VLNetwork(QuantumNetwork):
         self.metadata.distribution_requests = set()
         self.metadata.vlink_requests = set()
         self.metadata.distro_results = {}
-        self.entanglement_log = queue.Queue()
+        self.entanglement_log = []
 
         # members
         self.name = 'vl network'
@@ -39,7 +39,7 @@ class VLNetwork(QuantumNetwork):
         # TODO at this point the network graph is built, based on the graph requests for virtual links need to be produced
         # TODO one superlink per node, look at random_requests in QuantumNetwork
         self.vlinks: List[Request] = []
-        #self.add_vlink(src=self.get_node('n2'), dest=self.get_node('n9'), attr={'send_rate': self.vlink_send_rate})
+        self.add_vlink(src=self.get_node('n2'), dest=self.get_node('n9'), attr={'send_rate': self.vlink_send_rate})
 
         self.physical_graph = VLNetGraph(self.nodes, self.qchannels)
         self.vlink_graph = VLNetGraph(self.nodes, self.qchannels, vlinks=self.vlinks, lvl=1)

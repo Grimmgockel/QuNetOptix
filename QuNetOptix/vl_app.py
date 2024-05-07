@@ -46,6 +46,7 @@ class VLApp(ABC, Application):
         self.net: QuantumNetwork = None 
         self.waiting_for_vlink: bool = False # always false for maintenance app
         self.vlink_cnt: int = 0
+        self.entanglement_log_timestamp: Dict[str, int] = {} # for plotting
 
         # ep info can be vlink or standard ep
         self.src: Optional[VLAwareQNode] = None
@@ -136,6 +137,7 @@ class VLApp(ABC, Application):
             start_time_s=self._simulator.current_time.sec
         )
         self.own.trans_registry[epr.account.transmit_id] = transmit
+        self.entanglement_log_timestamp[transmit.id] = 0 # plotting
         self.log_trans(f'start new ep distribution: {transmit.src} -> {transmit.dst} \t[{epr}]', transmit=transmit)
 
         store_success = self.memory.write(epr)
@@ -188,38 +190,6 @@ class VLApp(ABC, Application):
         if cchannel is None:
             raise Exception(f"{self}: No such classic channel")
 
-        if self.own == epr.account.dst:
-            # bookkeeping
-            updated_transmit: Transmit = Transmit(
-                id=epr.account.transmit_id,
-                session=epr.account.session_id,
-                src=epr.account.src,
-                dst=epr.account.dst,
-                alice=epr.account,
-                #charlie=forward_epr.account,
-            )
-            updated_transmit.alice.locB = self.own
-            self.own.trans_registry[epr.account.transmit_id] = updated_transmit
-            self.log_trans(f"received qubit from {src_node.name}\t[{epr}]", transmit=updated_transmit)
-
-            storage_success_1 = self.memory.write(epr)
-            if not storage_success_1:
-                # revoke distribution
-                self.memory.read(epr)
-                self.send_control(cchannel, src_node, updated_transmit, 'revoke', self.app_name)
-                self.own.trans_registry[updated_transmit.id] = None # clear
-                return
-
-            self.log_trans(f"stored qubit {epr.name}", transmit=updated_transmit)
-
-            # if storage successful
-            self.send_control(cchannel, src_node, updated_transmit, 'swap', self.app_name)
-            return
-
-
-        # generate second epr for swapping
-        forward_epr = self.generate_qubit(src=epr.account.src, dst=epr.account.dst, session_id=epr.account.session_id, transmit_id=epr.account.transmit_id) # TODO this may be the culprit for memory issues
-
         # bookkeeping
         updated_transmit: Transmit = Transmit(
             id=epr.account.transmit_id,
@@ -227,15 +197,19 @@ class VLApp(ABC, Application):
             src=epr.account.src,
             dst=epr.account.dst,
             alice=epr.account,
-            charlie=forward_epr.account,
         )
         updated_transmit.alice.locB = self.own
         self.own.trans_registry[epr.account.transmit_id] = updated_transmit
         self.log_trans(f"received qubit from {src_node.name}\t[{epr}]", transmit=updated_transmit)
 
+        if self.own is not epr.account.dst: # dont generate forward epr when dst reached
+            # generate second epr for swapping
+            forward_epr = self.generate_qubit(src=epr.account.src, dst=epr.account.dst, session_id=epr.account.session_id, transmit_id=epr.account.transmit_id) # TODO this may be the culprit for memory issues
+            updated_transmit.charlie = forward_epr.account 
+
         # storage 
         storage_success_1 = self.memory.write(epr)
-        storage_success_2 = self.memory.write(forward_epr)
+        storage_success_2 = self.memory.write(forward_epr) if self.own is not epr.account.dst else True
         if not storage_success_1 or not storage_success_2:
             # revoke distribution
             self.memory.read(epr)
@@ -244,7 +218,11 @@ class VLApp(ABC, Application):
             self.own.trans_registry[updated_transmit.id] = None # clear
             return
 
-        self.log_trans(f"stored qubit {epr.name} and {forward_epr.name}", transmit=updated_transmit)
+        try:
+            self.log_trans(f"stored qubit {epr.name} and {forward_epr.name}", transmit=updated_transmit)
+        except UnboundLocalError:
+            self.log_trans(f"stored qubit {epr.name}", transmit=updated_transmit)
+
 
         # if storage successful
         self.send_control(cchannel, src_node, updated_transmit, 'swap', self.app_name)

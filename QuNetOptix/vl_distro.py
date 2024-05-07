@@ -48,13 +48,13 @@ class VLEnabledDistributionApp(VLApp):
         self.log_trans(simple_colors.green(f"successful distribution of [result_epr={result_epr}]"), transmit=transmit)
 
         # for plotting
-        self.net.entanglement_log.put(EntanglementLogEntry(
-            type=EntanglementLogEntry.ent_type.ENT,
-            status=EntanglementLogEntry.status_type.END2END,
-            instruction=EntanglementLogEntry.instruction_type.CREATE,
-            nodeA=self.own,
-            nodeB=src_node,
-        ))
+        #self.net.entanglement_log.append(EntanglementLogEntry(
+            #type=EntanglementLogEntry.ent_type.ENT,
+            #status=EntanglementLogEntry.status_type.END2END,
+            #instruction=EntanglementLogEntry.instruction_type.CREATE,
+            #nodeA=self.own,
+            #nodeB=src_node,
+        #))
 
         # meta data
         self.net.metadata.distro_results[transmit.id].src_result = (transmit, result_epr)

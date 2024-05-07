@@ -37,13 +37,13 @@ class VLMaintenanceApp(VLApp):
         self.log_trans(simple_colors.magenta(f'established vlink ({self.own.name}, {src_node.name})'), transmit=transmit)
         self.net.metadata.vlink_count += 1
         # for plotting
-        self.net.entanglement_log.put(EntanglementLogEntry(
-            type=EntanglementLogEntry.ent_type.VLINK,
-            status=EntanglementLogEntry.status_type.END2END,
-            instruction=EntanglementLogEntry.instruction_type.CREATE,
-            nodeA=self.own,
-            nodeB=src_node,
-        ))
+        #self.net.entanglement_log.append(EntanglementLogEntry(
+            ##type=EntanglementLogEntry.ent_type.VLINK,
+            #status=EntanglementLogEntry.status_type.END2END,
+            #instruction=EntanglementLogEntry.instruction_type.CREATE,
+            #nodeA=self.own,
+            #nodeB=src_node,
+        #))
 
         self.own.vlink_buf.put_nowait(transmit)
         src_node.vlink_buf.put_nowait(transmit)

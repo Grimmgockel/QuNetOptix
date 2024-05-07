@@ -12,6 +12,8 @@ from typing import Optional
 
 @dataclass
 class EntanglementLogEntry:
+    timestamp: int
+
     class ent_type(Enum):
         ENT = 0
         VLINK = 1
@@ -87,9 +89,9 @@ class VLNetGraph():
 
 
 class GraphAnimation():
-    def __init__(self, G: nx.Graph, entanglement_log: queue.Queue) -> None:
+    def __init__(self, G: nx.Graph, entanglement_log: List[EntanglementLogEntry]) -> None:
         # backlog for animation
-        self.entanglement_log: queue.Queue = entanglement_log
+        self.entanglement_log: List[EntanglementLogEntry] = entanglement_log
 
         # build graph from other graph
         self.graph = nx.Graph()
@@ -107,12 +109,11 @@ class GraphAnimation():
         self.anim = FuncAnimation(self.fig, self.update, interval=500)
 
     def update(self, frame):
-        try:
-            ent: EntanglementLogEntry = self.entanglement_log.get_nowait()
-        except queue.Empty:
-            ent = None
+        for log_entry in self.entanglement_log:
+            print(log_entry)
 
         # Update graph with item from buffer
+        '''
         if ent:
             source: VLAwareQNode = ent.nodeA.name 
             target: VLAwareQNode = ent.nodeB.name
@@ -130,4 +131,5 @@ class GraphAnimation():
         # Draw colored edges
         #for edge, color in self.edge_colors.items():
             #nx.draw_networkx_edges(self.graph, pos=self.pos, edgelist=[edge], edge_color=color, width=5)
+        '''
 
