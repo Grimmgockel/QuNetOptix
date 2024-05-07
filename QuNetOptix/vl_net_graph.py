@@ -1,4 +1,5 @@
 from qns.network.requests import Request
+from itertools import groupby
 import re
 from vlaware_qnode import VLAwareQNode
 from typing import List, Tuple
@@ -17,7 +18,7 @@ class EntanglementLogEntry:
     class ent_type(Enum):
         ENT = 0
         VLINK = 1
-    type: Optional[ent_type] = None
+    ent_t: Optional[ent_type] = None
 
     class instruction_type(Enum):
         CREATE = 0
@@ -34,7 +35,7 @@ class EntanglementLogEntry:
 
     @property
     def color(self):
-        color: str = 'purple' if self.type == self.ent_type.VLINK else 'red'
+        color: str = 'purple' if self.ent_t == self.ent_type.VLINK else 'red'
         return color
 
     @property
@@ -48,7 +49,7 @@ class EntanglementLogEntry:
         return style
 
     def __repr__(self) -> str:
-        return f'{self.instruction.name} {self.status.name} {self.type.name} for {self.nodeA.name} -> {self.nodeB.name} [ts={self.timestamp}]'
+        return f'{self.instruction.name} {self.status.name} {self.ent_t.name} for {self.nodeA.name} -> {self.nodeB.name} [ts={self.timestamp}]'
 
 
 class VLNetGraph():
@@ -79,17 +80,6 @@ class VLNetGraph():
         shortest_path_length = nx.shortest_path_length(self.graph, source=source, target=target)
         return shortest_path_length
 
-    def save_entanglement(self, nodeA: VLAwareQNode, nodeB: VLAwareQNode, type: str):
-        pass
-
-    def plot(self):
-        # TODO different colored edges for different levels
-        # TODO lvl2 graph
-        nx.draw(self.graph, with_labels=True, node_color='skyblue', node_size=800, font_size=12, font_weight='bold', width=4)
-        plt.title(f'lvl {self.lvl} graph')
-        plt.show()
-
-
 
 class GraphAnimation():
     def __init__(self, G: nx.Graph, entanglement_log: List[EntanglementLogEntry]) -> None:
@@ -106,36 +96,92 @@ class GraphAnimation():
             self.graph.add_edge(edge[0].name, edge[1].name)
 
         # viz
+        self.start_frame = True
+        self.entanglement_edges = []
+        self.entanglement_edges_e2e = []
+        self.vlink_edges = []
+        self.vlink_edges_e2e = []
+        self.timestamp: int = 0
         self.fig, self.ax = plt.subplots()
         self.pos = nx.kamada_kawai_layout(self.graph)  
         self.edge_colors = {}  # Dictionary to store colors for edges
-        self.anim = FuncAnimation(self.fig, self.update, interval=500)
 
-        for entry in self.entanglement_log:
-            print(entry)
+        # sort for timestamps
+        self.entanglement_log.sort(key=lambda entry: entry.timestamp)
+        self.groups = groupby(self.entanglement_log, key=lambda entry: entry.timestamp)
+        self.batches = []
+        self.frame_count = 0
+        self.interval = 500
+        for timestamp, group in self.groups:
+            self.frame_count += 1
+            self.batches.append(list(group))
+        self.frame_count += 2
+
+        self.anim = FuncAnimation(self.fig, self.update, interval=self.interval, frames=self.frame_count)
+        self.draw_physical()
 
     def update(self, frame):
-        #for log_entry in self.entanglement_log:
-            #print(log_entry)
+        self.draw_physical()
 
-        # Update graph with item from buffer
-        '''
-        if ent:
-            source: VLAwareQNode = ent.nodeA.name 
-            target: VLAwareQNode = ent.nodeB.name
-            color: VLAwareQNode = ent.color
-            #self.graph.add_edge(source, target)
-            self.edge_colors[(source, target)] = color
+        if self.start_frame: 
+            self.start_frame = False
+            return
 
+        try:
+            batch = self.batches[self.timestamp]
+            #if self.timestamp > 0:
+                #raise IndexError()
+            print(f'{self.timestamp}\t{batch}')
+            self.timestamp += 1
 
+            for item in batch: # per timestamp
+                entry: EntanglementLogEntry = item
+                if entry.ent_t == EntanglementLogEntry.ent_type.ENT:
+                    if entry.instruction == EntanglementLogEntry.instruction_type.CREATE:
+                        if entry.status == EntanglementLogEntry.status_type.INTERMEDIATE:
+                            self.entanglement_edges.append((entry.nodeA.name, entry.nodeB.name))
+                        elif entry.status == EntanglementLogEntry.status_type.END2END:
+                            self.entanglement_edges_e2e.append((entry.nodeA.name, entry.nodeB.name))
+                        else:
+                            pass
+                    elif entry.instruction == EntanglementLogEntry.instruction_type.DELETE:
+                        if entry.status == EntanglementLogEntry.status_type.INTERMEDIATE:
+                            self.entanglement_edges.remove((entry.nodeA.name, entry.nodeB.name))
+                        elif entry.status == EntanglementLogEntry.status_type.END2END:
+                            self.entanglement_edges_e2e.remove((entry.nodeA.name, entry.nodeB.name))
+                        else:
+                            pass
+                    else: # invalid instruction
+                        pass
+                if entry.ent_t == EntanglementLogEntry.ent_type.VLINK:
+                    if entry.instruction == EntanglementLogEntry.instruction_type.CREATE:
+                        if entry.status == EntanglementLogEntry.status_type.INTERMEDIATE:
+                            self.entanglement_edges.append((entry.nodeA.name, entry.nodeB.name))
+                        elif entry.status == EntanglementLogEntry.status_type.END2END:
+                            self.entanglement_edges_e2e.append((entry.nodeA.name, entry.nodeB.name))
+                        else:
+                            pass
+                    elif entry.instruction == EntanglementLogEntry.instruction_type.DELETE:
+                        if entry.status == EntanglementLogEntry.status_type.INTERMEDIATE:
+                            self.entanglement_edges.remove((entry.nodeA.name, entry.nodeB.name))
+                        elif entry.status == EntanglementLogEntry.status_type.END2END:
+                            self.entanglement_edges_e2e.remove((entry.nodeA.name, entry.nodeB.name))
+                        else:
+                            pass
+                    else: # invalid instruction
+                        pass
+        except IndexError:
+            pass
+
+        nx.draw_networkx_edges(self.graph, pos=self.pos, edgelist=self.vlink_edges, edge_color='purple', width=1)
+        nx.draw_networkx_edges(self.graph, pos=self.pos, edgelist=self.vlink_edges_e2e, edge_color='purple', width=4)
+        nx.draw_networkx_edges(self.graph, pos=self.pos, edgelist=self.entanglement_edges, edge_color='red', width=1)
+        nx.draw_networkx_edges(self.graph, pos=self.pos, edgelist=self.entanglement_edges_e2e, edge_color='red', width=4)
+
+    def draw_physical(self):
         # Clear previous plot
         self.ax.clear()
 
         # Draw network graph
         nx.draw(self.graph, pos=self.pos, ax=self.ax, with_labels=True, node_color='white', node_size=500, font_size=10, edgecolors='black', style='dotted')
-
-        # Draw colored edges
-        #for edge, color in self.edge_colors.items():
-            #nx.draw_networkx_edges(self.graph, pos=self.pos, edgelist=[edge], edge_color=color, width=5)
-        '''
 

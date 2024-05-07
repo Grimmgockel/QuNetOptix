@@ -103,7 +103,12 @@ class NetworkOracle():
 
     def entanglement_animation(self):
         ga = GraphAnimation(self._net.physical_graph.graph, self._net.metadata.entanglement_log)
-        plt.show()
+        plt.show(block=False)
+        plt.pause(float(ga.frame_count*ga.interval)/1000)
+        plt.close(ga.fig)
+
+        ga.anim.save('no_vlink_demo.gif', writer='ffmpeg')
+
 
     def generate_dot_file(self, filename: str, lvl=0):
         '''
