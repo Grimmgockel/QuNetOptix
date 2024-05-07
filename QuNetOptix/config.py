@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from qns.entity.node.app import Application
-from base_routing import BaseApp
 from qns.network.topology import Topology
 from qns.network.requests import Request
 

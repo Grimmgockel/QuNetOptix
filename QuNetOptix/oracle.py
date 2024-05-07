@@ -7,6 +7,7 @@ import qns.utils.log as log
 from vl_network import VLNetwork
 from config import Config
 from metadata import MetaData
+from vl_net_graph import GraphAnimation
 
 import os
 from typing import Any 
@@ -100,11 +101,14 @@ class NetworkOracle():
         throughput = float(agg_success_count) / s.te.sec
         return throughput
 
+    def entanglement_animation(self):
+        ga = GraphAnimation(self._net.physical_graph.graph, self._net.entanglement_log)
+        plt.show()
 
-    '''
-    Vizualize network level as dot file (https://arxiv.org/abs/2306.05982)
-    TODO plot with networkx
     def generate_dot_file(self, filename: str, lvl=0):
+        '''
+        Vizualize network level as dot file (https://arxiv.org/abs/2306.05982)
+        '''
         if lvl not in range(3):
             print("Invalid plot level")
             return
@@ -145,6 +149,5 @@ class NetworkOracle():
                         f.write(f'{src.name}--{dest.name} [color=red penwidth=1 constraint=False];\n')
 
             f.write('}')
-    '''
 
 

@@ -2,18 +2,17 @@ import qns.utils.log as log
 from oracle import NetworkOracle
 from config import Config
 from config import Job
+from qns.network.topology import RandomTopology
 from vl_topo import CustomDoubleStarTopology
 from typing import List
 
-# TODO vlink onlys are:w
-# TODO fix quantum memory issues by testing vlinks and their consumption (probably todo with vlink src not getting cleared) -> if test cases can run multiple parallels WITH a long sim time then we good
 # TODO REFACTOR swapping code still duplicate
 
+# TODO implement basic proof of concept 'poc.py' for shortcut links, where paths with increasing lengths are shortcutted and EP are constantly distributed
 # TODO entanglement tracker (observer pattern) -> animation??
 # TODO plot networkx pretty
 # TODO save experiments into results.csv
 # TODO look into docs for multicore sim
-# TODO implement basic proof of concept 'poc.py' for shortcut links, where paths with increasing lengths are shortcutted and EP are constantly distributed
 
 # TODO implement vlink selection
 # TODO implement custom waxman topology
@@ -35,9 +34,9 @@ if __name__ == '__main__':
     ] 
 
     test_sessions_2: List[Job] = [
-        ('n2', 'n11'), 
-        ('n1', 'n3'), 
-        ('n8', 'n7'),
+        ('n0', 'n11'), 
+        #('n1', 'n3'), 
+        #3('n8', 'n7'),
     ]
 
     config = Config(
@@ -46,10 +45,12 @@ if __name__ == '__main__':
         acc=1000000,
         vlink_send_rate=1,
         send_rate=1,
-        topo=CustomDoubleStarTopology(),
-        job=Job.custom(sessions=test_sessions_2),
+        topo = CustomDoubleStarTopology(),
+        job=Job.custom(sessions=test_sessions_2)
     )
-    meta_data = oracle.run(config, loglvl=log.logging.DEBUG, continuous_distro=False, n_vlinks=len(test_sessions_2), monitor=False)
+    meta_data = oracle.run(config, loglvl=log.logging.DEBUG, continuous_distro=False, n_vlinks=0, monitor=False)
+
+    print()
     print(f'remaining mem usage: {meta_data.remaining_memory_usage}')
     print(f'send: {meta_data.send_count}, success: {meta_data.success_count}, vlinks: {meta_data.vlink_count}')
     print()
@@ -61,5 +62,7 @@ if __name__ == '__main__':
         print(f'SRC: {value.src_result}')
         print(f'DST: {value.dst_result}')
         print()
+
+    oracle.entanglement_animation()
 
 

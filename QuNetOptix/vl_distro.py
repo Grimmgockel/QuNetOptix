@@ -7,6 +7,7 @@ from qns.models.epr import WernerStateEntanglement, BellStateEntanglement
 import qns.utils.log as log
 
 from vlaware_qnode import VLAwareQNode, Transmit, EprAccount
+from vl_net_graph import EntanglementLogEntry
 from vl_app import VLApp
 from vl_routing import RoutingResult
 from vl_entanglement import StandardEntangledPair
@@ -45,6 +46,15 @@ class VLEnabledDistributionApp(VLApp):
     def _success(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         result_epr: QuantumModel = self.memory.read(transmit.charlie.name)
         self.log_trans(simple_colors.green(f"successful distribution of [result_epr={result_epr}]"), transmit=transmit)
+
+        # for plotting
+        self.net.entanglement_log.put(EntanglementLogEntry(
+            type=EntanglementLogEntry.ent_type.ENT,
+            status=EntanglementLogEntry.status_type.END2END,
+            instruction=EntanglementLogEntry.instruction_type.CREATE,
+            nodeA=self.own,
+            nodeB=src_node,
+        ))
 
         # meta data
         self.net.metadata.distro_results[transmit.id].src_result = (transmit, result_epr)

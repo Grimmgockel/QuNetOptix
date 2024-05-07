@@ -14,6 +14,7 @@ from vlaware_qnode import VLAwareQNode, Transmit, EprAccount
 from vl_app import VLApp
 from vl_routing import RoutingResult
 from vl_entanglement import VLEntangledPair
+from vl_net_graph import EntanglementLogEntry
 
 from typing import Optional, Type
 import uuid
@@ -35,6 +36,14 @@ class VLMaintenanceApp(VLApp):
     def _success(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         self.log_trans(simple_colors.magenta(f'established vlink ({self.own.name}, {src_node.name})'), transmit=transmit)
         self.net.metadata.vlink_count += 1
+        # for plotting
+        self.net.entanglement_log.put(EntanglementLogEntry(
+            type=EntanglementLogEntry.ent_type.VLINK,
+            status=EntanglementLogEntry.status_type.END2END,
+            instruction=EntanglementLogEntry.instruction_type.CREATE,
+            nodeA=self.own,
+            nodeB=src_node,
+        ))
 
         self.own.vlink_buf.put_nowait(transmit)
         src_node.vlink_buf.put_nowait(transmit)

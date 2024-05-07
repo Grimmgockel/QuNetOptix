@@ -23,8 +23,6 @@ from vl_network import VLNetwork
 from oracle import NetworkOracle
 from config import Config
 from config import Job
-import base_routing
-
 
 
 if __name__ == '__main__':
