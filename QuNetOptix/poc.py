@@ -48,7 +48,7 @@ if __name__ == '__main__':
         topo = CustomDoubleStarTopology(),
         job=Job.custom(sessions=test_sessions_2)
     )
-    meta_data = oracle.run(config, loglvl=log.logging.DEBUG, continuous_distro=False, n_vlinks=1, monitor=False)
+    meta_data = oracle.run(config, loglvl=log.logging.DEBUG, continuous_distro=False, n_vlinks=0, monitor=False)
 
     print()
     print(f'remaining mem usage: {meta_data.remaining_memory_usage}')

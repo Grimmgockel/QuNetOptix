@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import List, Set, Dict, Tuple, Optional
 from vlaware_qnode import Transmit
 from qns.network.requests import Request
+from vl_net_graph import EntanglementLogEntry
 from qns.models.core import QuantumModel
 
 @dataclass
@@ -18,6 +19,10 @@ class MetaData:
     send_count: int = 0
     success_count: int = 0
     vlink_count: int = 0
+
+    # plotting
+    entanglement_log: List[EntanglementLogEntry] = None
+    entanglement_log_timestamps: Dict[str, int] = None
 
     # Routing
     distribution_requests: Set[Request] = None

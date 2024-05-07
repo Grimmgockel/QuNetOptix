@@ -17,6 +17,8 @@ from vlaware_qnode import VLAwareQNode, Transmit, EprAccount
 from vl_routing import RoutingResult
 from vl_entanglement import StandardEntangledPair
 from metadata import MetaData, DistroResult
+from vl_network import VLNetwork
+from vl_net_graph import EntanglementLogEntry
 
 from typing import Optional, Dict, Callable, Type, Any, Tuple
 from abc import ABC, abstractmethod
@@ -43,10 +45,9 @@ class VLApp(ABC, Application):
         self.app_name: str = None
         self.own: VLAwareQNode = None 
         self.memory: QuantumMemory = None 
-        self.net: QuantumNetwork = None 
+        self.net: VLNetwork = None 
         self.waiting_for_vlink: bool = False # always false for maintenance app
         self.vlink_cnt: int = 0
-        self.entanglement_log_timestamp: Dict[str, int] = {} # for plotting
 
         # ep info can be vlink or standard ep
         self.src: Optional[VLAwareQNode] = None
@@ -82,7 +83,7 @@ class VLApp(ABC, Application):
 
         self.own: VLAwareQNode = self._node
         self.memory: QuantumMemory = self.own.memories[0]
-        self.net: QuantumNetwork = self.own.network
+        self.net: VLNetwork = self.own.network
 
         requests = self.own.requests if self.app_name == 'distro' else self.own.vlinks
         for request in requests:
@@ -132,12 +133,11 @@ class VLApp(ABC, Application):
             session=session_id,
             src=session_src,
             dst=session_dst,
-            #alice=ep,
-            charlie=epr.account,
+            charlie=epr.account, # only set forward for first node
             start_time_s=self._simulator.current_time.sec
         )
         self.own.trans_registry[epr.account.transmit_id] = transmit
-        self.entanglement_log_timestamp[transmit.id] = 0 # plotting
+        self.net.metadata.entanglement_log_timestamps[transmit.id] = 0 # plotting
         self.log_trans(f'start new ep distribution: {transmit.src} -> {transmit.dst} \t[{epr}]', transmit=transmit)
 
         store_success = self.memory.write(epr)
@@ -203,8 +203,7 @@ class VLApp(ABC, Application):
         self.log_trans(f"received qubit from {src_node.name}\t[{epr}]", transmit=updated_transmit)
 
         if self.own is not epr.account.dst: # dont generate forward epr when dst reached
-            # generate second epr for swapping
-            forward_epr = self.generate_qubit(src=epr.account.src, dst=epr.account.dst, session_id=epr.account.session_id, transmit_id=epr.account.transmit_id) # TODO this may be the culprit for memory issues
+            forward_epr = self.generate_qubit(src=epr.account.src, dst=epr.account.dst, session_id=epr.account.session_id, transmit_id=epr.account.transmit_id) 
             updated_transmit.charlie = forward_epr.account 
 
         # storage 
@@ -223,6 +222,18 @@ class VLApp(ABC, Application):
         except UnboundLocalError:
             self.log_trans(f"stored qubit {epr.name}", transmit=updated_transmit)
 
+        # for plotting
+        if self.own is not epr.account.dst:
+            type = EntanglementLogEntry.ent_type.ENT if self.app_name == 'distro' else EntanglementLogEntry.ent_type.VLINK
+            self.net.metadata.entanglement_log.append(EntanglementLogEntry(
+                self.net.metadata.entanglement_log_timestamps[updated_transmit.id],
+                type=type,
+                status=EntanglementLogEntry.status_type.INTERMEDIATE,
+                instruction=EntanglementLogEntry.instruction_type.CREATE,
+                nodeA=src_node,
+                nodeB=self.own,
+            ))
+            self.net.metadata.entanglement_log_timestamps[updated_transmit.id] += 1
 
         # if storage successful
         self.send_control(cchannel, src_node, updated_transmit, 'swap', self.app_name)
@@ -287,6 +298,35 @@ class VLApp(ABC, Application):
 
             self.log_trans(f'performed swap (({backward_node.name}, {self.own.name}) - ({self.own.name}, {forward_node.name})) -> ({backward_node.name}, {forward_node.name})', transmit=transmit)
             self.log_trans(f'consumed: {first} and {second} | new: {new_epr}', transmit=transmit)
+
+            # for plotting 
+            ent_type = EntanglementLogEntry.ent_type.ENT if self.app_name == 'distro' else EntanglementLogEntry.ent_type.VLINK
+            status = EntanglementLogEntry.status_type.INTERMEDIATE if forward_node is not transmit.dst else EntanglementLogEntry.status_type.END2END
+            self.net.metadata.entanglement_log.append(EntanglementLogEntry(
+                self.net.metadata.entanglement_log_timestamps[transmit.id],
+                type=ent_type,
+                status=status,
+                instruction=EntanglementLogEntry.instruction_type.CREATE,
+                nodeA=backward_node,
+                nodeB=forward_node,
+            ))
+            self.net.metadata.entanglement_log.append(EntanglementLogEntry(
+                self.net.metadata.entanglement_log_timestamps[transmit.id],
+                type=ent_type,
+                status=EntanglementLogEntry.status_type.INTERMEDIATE,
+                instruction=EntanglementLogEntry.instruction_type.DELETE,
+                nodeA=backward_node,
+                nodeB=self.own,
+            ))
+            self.net.metadata.entanglement_log.append(EntanglementLogEntry(
+                self.net.metadata.entanglement_log_timestamps[transmit.id],
+                type=ent_type,
+                status=EntanglementLogEntry.status_type.INTERMEDIATE,
+                instruction=EntanglementLogEntry.instruction_type.DELETE,
+                nodeA=self.own,
+                nodeB=forward_node,
+            ))
+            self.net.metadata.entanglement_log_timestamps[transmit.id] += 1
 
         # send next
         self.send_control(src_cchannel, src_node, transmit, 'next', self.app_name)

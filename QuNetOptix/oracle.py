@@ -19,7 +19,7 @@ from typing import Optional
 class NetworkOracle():
     def __init__(self) -> None:
         self._sim: Optional[Simulator] = None
-        self._net: Optional[QuantumNetwork] = None
+        self._net: Optional[VLNetwork] = None
         self._monitor: Optional[Monitor] = None
         self.data = pd.DataFrame()
 
@@ -34,7 +34,7 @@ class NetworkOracle():
 
         # Network
         metadata = MetaData()
-        self._net = VLNetwork(topo=config.topo, metadata=metadata, continuous_distro=continuous_distro, n_vlinks=n_vlinks, vlink_send_rate=config.vlink_send_rate)
+        self._net: VLNetwork = VLNetwork(topo=config.topo, metadata=metadata, continuous_distro=continuous_distro, n_vlinks=n_vlinks, vlink_send_rate=config.vlink_send_rate)
         self._net.build_route()
         if config.job.sessions is None:
             self._net.random_requests(number=config.job.session_count, attr={'send_rate': config.send_rate})
@@ -102,7 +102,7 @@ class NetworkOracle():
         return throughput
 
     def entanglement_animation(self):
-        ga = GraphAnimation(self._net.physical_graph.graph, self._net.entanglement_log)
+        ga = GraphAnimation(self._net.physical_graph.graph, self._net.metadata.entanglement_log)
         plt.show()
 
     def generate_dot_file(self, filename: str, lvl=0):

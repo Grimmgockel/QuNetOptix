@@ -47,6 +47,9 @@ class EntanglementLogEntry:
         style: str = 'solid' if self.status == self.status_type.END2END else 'dashed'
         return style
 
+    def __repr__(self) -> str:
+        return f'{self.instruction.name} {self.status.name} {self.type.name} for {self.nodeA.name} -> {self.nodeB.name} [ts={self.timestamp}]'
+
 
 class VLNetGraph():
     def __init__(self, nodes: List[VLAwareQNode], qchannels: List[VLAwareQNode], lvl: int = 0, vlinks: List[Request] = None):
@@ -108,9 +111,12 @@ class GraphAnimation():
         self.edge_colors = {}  # Dictionary to store colors for edges
         self.anim = FuncAnimation(self.fig, self.update, interval=500)
 
+        for entry in self.entanglement_log:
+            print(entry)
+
     def update(self, frame):
-        for log_entry in self.entanglement_log:
-            print(log_entry)
+        #for log_entry in self.entanglement_log:
+            #print(log_entry)
 
         # Update graph with item from buffer
         '''
