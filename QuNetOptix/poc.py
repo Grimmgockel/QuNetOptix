@@ -26,9 +26,9 @@ if __name__ == '__main__':
 
     test_sessions: List[Job] = [
         ('n0', 'n11'), 
-        #('n10', 'n1'),
-        #('n3', 'n8'),
-        #('n7', 'n4'),
+        ('n10', 'n1'),
+        ('n3', 'n8'),
+        ('n7', 'n4'),
     ]
 
     config = Config(
@@ -40,7 +40,7 @@ if __name__ == '__main__':
         topo = CustomDoubleStarTopology(),
         job=Job.custom(sessions=test_sessions)
     )
-    meta_data = oracle.run(config, loglvl=log.logging.DEBUG, continuous_distro=False, n_vlinks=1, monitor=False)
+    meta_data = oracle.run(config, loglvl=log.logging.DEBUG, continuous_distro=False, n_vlinks=0, monitor=False)
     print(f'send: {meta_data.send_count}, success: {meta_data.success_count}, vlinks: {meta_data.vlink_count}, remaining_mem: {meta_data.remaining_memory_usage}')
 
     for key, value in meta_data.distro_results.items():
@@ -50,7 +50,7 @@ if __name__ == '__main__':
         print(f'DST: {value.dst_result}')
 
     # TODO concat multiple requests and pass into this for successive sessions
-    ga: GraphAnimation = oracle.entanglement_animation('vlink_demo.gif', fps=2)
+    ga: GraphAnimation = oracle.entanglement_animation('multiple_no_vlink_demo.gif', fps=2)
     #plt.show(block=False)
     #plt.pause(float(ga.frame_count*ga.interval)/1000)
     #plt.close(ga.fig)
