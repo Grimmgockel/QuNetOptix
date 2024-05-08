@@ -96,6 +96,7 @@ class GraphAnimation():
             self.graph.add_edge(edge[0].name, edge[1].name)
 
         # viz
+        plt.style.use('dark_background')
         self.start_frame = True
         self.entanglement_edges = []
         self.entanglement_edges_e2e = []
@@ -180,8 +181,8 @@ class GraphAnimation():
         except IndexError:
             pass
 
-        nx.draw_networkx_edges(self.graph, pos=self.pos, edgelist=self.vlink_edges, edge_color='purple', width=1)
-        nx.draw_networkx_edges(self.graph, pos=self.pos, edgelist=self.vlink_edges_e2e, edge_color='purple', width=4)
+        nx.draw_networkx_edges(self.graph, pos=self.pos, edgelist=self.vlink_edges, edge_color='blue', width=1)
+        nx.draw_networkx_edges(self.graph, pos=self.pos, edgelist=self.vlink_edges_e2e, edge_color='blue', width=4)
         nx.draw_networkx_edges(self.graph, pos=self.pos, edgelist=self.entanglement_edges, edge_color='red', width=1)
         nx.draw_networkx_edges(self.graph, pos=self.pos, edgelist=self.entanglement_edges_e2e, edge_color='red', width=4)
 
@@ -190,5 +191,5 @@ class GraphAnimation():
         self.ax.clear()
 
         # Draw network graph
-        nx.draw(self.graph, pos=self.pos, ax=self.ax, with_labels=True, node_color='white', node_size=500, font_size=10, edgecolors='black', style='dotted')
+        nx.draw(self.graph, pos=self.pos, ax=self.ax, with_labels=True, node_color='black', node_size=500, font_size=10, edgecolors='white', font_color='white', edge_color='white', style='dotted')
 
