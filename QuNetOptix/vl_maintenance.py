@@ -45,7 +45,7 @@ class VLMaintenanceApp(VLApp):
             nodeA=self.own,
             nodeB=src_node,
         ))
-        self.net.metadata.entanglement_log_timestamps[transmit.id] += 1
+        self.net.metadata.entanglement_log_timestamps[transmit.id] += 2 # TODO increment the amount of hops to the vlink to get the timestamps right 
 
         self.own.vlink_buf.put_nowait(transmit)
         src_node.vlink_buf.put_nowait(transmit)

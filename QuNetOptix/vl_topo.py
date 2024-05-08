@@ -1,15 +1,42 @@
+from qns.entity.node.app import Application
 from qns.entity.qchannel.qchannel import QuantumChannel
 from qns.network.topology import Topology
+from qns.network.topology.linetopo import LineTopology
 from vlaware_qnode import VLAwareQNode
 from vl_maintenance import VLMaintenanceApp
 from vl_distro import VLEnabledDistributionApp
 
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
-'''
-Custom double star topology for testing virtual link routing: minimum topology for virtual link exploitation
-'''
+class CustomLineTopology(LineTopology):
+    def __init__(self, nodes_number):
+        super().__init__(nodes_number, nodes_apps=[VLEnabledDistributionApp(), VLMaintenanceApp()], memory_args=[{'capacity': 1000}])
+
+    def build(self) -> Tuple[List[VLAwareQNode], List[QuantumChannel]]:
+        nl: List[VLAwareQNode] = []
+        ll = []
+        if self.nodes_number >= 1:
+            n = VLAwareQNode(f"n{1}")
+            nl.append(n)
+        pn = n
+        for i in range(self.nodes_number - 1):
+            n = VLAwareQNode(f"n{i+2}")
+            nl.append(n)
+            link = QuantumChannel(name=f"l{i+1}", **self.qchannel_args)
+            ll.append(link)
+
+            pn.add_qchannel(link)
+            n.add_qchannel(link)
+            pn = n
+
+        self._add_apps(nl)
+        self._add_memories(nl)
+        return nl, ll
+
 class CustomDoubleStarTopology(Topology):
+    '''
+    Custom double star topology for testing virtual link routing: minimum topology for virtual link exploitation
+    '''
     def __init__(self, memory_args=[{'capacity': 50}]):
         super().__init__(12, memory_args=memory_args, nodes_apps=[VLEnabledDistributionApp(),VLMaintenanceApp()])
         #super().__init__(12, memory_args=[{"capacity": 50}], nodes_apps=[DummyApp(),VLMaintenanceApp()])

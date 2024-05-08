@@ -4,7 +4,7 @@ from config import Config
 from vl_net_graph import GraphAnimation
 from config import Job
 from qns.network.topology import RandomTopology
-from vl_topo import CustomDoubleStarTopology
+from vl_topo import CustomDoubleStarTopology, CustomLineTopology
 from typing import List
 import matplotlib.pyplot as plt
 
@@ -24,36 +24,32 @@ import matplotlib.pyplot as plt
 if __name__ == '__main__': 
     oracle = NetworkOracle()
 
-    test_sessions: List[Job] = [
-        ('n0', 'n11'), 
-        ('n10', 'n1'),
-        ('n3', 'n8'),
-        ('n7', 'n4'),
-    ]
 
-    config = Config(
-        ts=0,
-        te=200,
-        acc=1000000,
-        vlink_send_rate=1,
-        send_rate=1,
-        topo = CustomDoubleStarTopology(),
-        job=Job.custom(sessions=test_sessions)
-    )
-    meta_data = oracle.run(config, loglvl=log.logging.DEBUG, continuous_distro=False, n_vlinks=4, monitor=False)
-    print(f'send: {meta_data.send_count}, success: {meta_data.success_count}, vlinks: {meta_data.vlink_count}, remaining_mem: {meta_data.remaining_memory_usage}')
+    for i in range(5, 16):
+        nodes_number = i
+        config = Config(
+            ts=0,
+            te=10,
+            acc=1000000,
+            vlink_send_rate=2,
+            send_rate=1,
+            topo = CustomLineTopology(nodes_number=nodes_number),
+        )
+        test_sessions: List[Job] = [
+            ('n1', f'n{nodes_number}'), 
+        ]
+        config.job = Job.custom(sessions=test_sessions)
+        meta_data = oracle.run(config, loglvl=log.logging.DEBUG, monitor=False)
+        #print(f'send: {meta_data.send_count}, success: {meta_data.success_count}, vlinks: {meta_data.vlink_count}, remaining_mem: {meta_data.remaining_memory_usage}')
+        '''
+        for key, value in meta_data.distro_results.items():
+            print('---- SUCCESSFUL DISTRIBUTION ----')
+            print(f'ID: {key}')
+            print(f'SRC: {value.src_result}')
+            print(f'DST: {value.dst_result}')
+        '''
 
-    for key, value in meta_data.distro_results.items():
-        print('---- SUCCESSFUL DISTRIBUTION ----')
-        print(f'ID: {key}')
-        print(f'SRC: {value.src_result}')
-        print(f'DST: {value.dst_result}')
-
-    # TODO concat multiple requests and pass into this for successive sessions
-    ga: GraphAnimation = oracle.entanglement_animation('multiple_vlinks_demo.gif', fps=2)
-    #plt.show(block=False)
-    #plt.pause(float(ga.frame_count*ga.interval)/1000)
-    #plt.close(ga.fig)
+        ga: GraphAnimation = oracle.entanglement_animation(f'path_demo{i-5}.gif', fps=10)
 
 
 

@@ -122,7 +122,7 @@ class VLEnabledDistributionApp(VLApp):
         self.waiting_for_vlink = False
 
         # for plotting
-        self.net.metadata.entanglement_log_timestamps[transmit_to_teleport.id] = self.net.metadata.entanglement_log_timestamps[transmit.id]
+        self.net.metadata.entanglement_log_timestamps[transmit_to_teleport.id] = self.net.metadata.entanglement_log_timestamps[vlink_transmit.id]
         self.net.metadata.entanglement_log.append(EntanglementLogEntry(
             self.net.metadata.entanglement_log_timestamps[transmit_to_teleport.id],
             ent_t=EntanglementLogEntry.ent_type.ENT,
