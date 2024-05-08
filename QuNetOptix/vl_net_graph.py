@@ -181,10 +181,10 @@ class GraphAnimation():
         except IndexError:
             pass
 
-        nx.draw_networkx_edges(self.graph, pos=self.pos, edgelist=self.vlink_edges, edge_color='blue', width=1)
-        nx.draw_networkx_edges(self.graph, pos=self.pos, edgelist=self.vlink_edges_e2e, edge_color='blue', width=4)
-        nx.draw_networkx_edges(self.graph, pos=self.pos, edgelist=self.entanglement_edges, edge_color='red', width=1)
-        nx.draw_networkx_edges(self.graph, pos=self.pos, edgelist=self.entanglement_edges_e2e, edge_color='red', width=4)
+        nx.draw_networkx_edges(self.graph, pos=self.pos, edgelist=self.vlink_edges, edge_color='blue', width=2)
+        nx.draw_networkx_edges(self.graph, pos=self.pos, edgelist=self.vlink_edges_e2e, edge_color='blue', width=2)
+        nx.draw_networkx_edges(self.graph, pos=self.pos, edgelist=self.entanglement_edges, edge_color='red', width=2)
+        nx.draw_networkx_edges(self.graph, pos=self.pos, edgelist=self.entanglement_edges_e2e, edge_color='purple', width=4)
 
     def draw_physical(self):
         # Clear previous plot
