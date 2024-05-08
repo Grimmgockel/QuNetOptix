@@ -2,7 +2,7 @@
 
 TODO.
 
-<div style="text-align:center;">
+<div style="text-align:center; margin-left:auto; margin-right:auto;">
     <img src="https://i.imgur.com/B4i4n2b.gif" width="50%" style="border: 1px solid #333333"/>
 </div>
 
