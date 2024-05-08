@@ -47,15 +47,6 @@ class VLEnabledDistributionApp(VLApp):
         result_epr: QuantumModel = self.memory.read(transmit.charlie.name)
         self.log_trans(simple_colors.green(f"successful distribution of [result_epr={result_epr}]"), transmit=transmit)
 
-        # for plotting
-        #self.net.entanglement_log.append(EntanglementLogEntry(
-            #type=EntanglementLogEntry.ent_type.ENT,
-            #status=EntanglementLogEntry.status_type.END2END,
-            #instruction=EntanglementLogEntry.instruction_type.CREATE,
-            #nodeA=self.own,
-            #nodeB=src_node,
-        #))
-
         # meta data
         self.net.metadata.distro_results[transmit.id].src_result = (transmit, result_epr)
         self.net.metadata.success_count += 1
@@ -129,6 +120,36 @@ class VLEnabledDistributionApp(VLApp):
         vlink_transmit.dst.trans_registry[vlink_transmit.id]= None
         vlink_transmit.src.trans_registry[vlink_transmit.id]= None
         self.waiting_for_vlink = False
+
+        # for plotting
+        self.net.metadata.entanglement_log_timestamps[transmit_to_teleport.id] = self.net.metadata.entanglement_log_timestamps[transmit.id]
+        self.net.metadata.entanglement_log.append(EntanglementLogEntry(
+            self.net.metadata.entanglement_log_timestamps[transmit_to_teleport.id],
+            ent_t=EntanglementLogEntry.ent_type.ENT,
+            status=EntanglementLogEntry.status_type.INTERMEDIATE,
+            instruction=EntanglementLogEntry.instruction_type.DELETE,
+            nodeA=backward_node,
+            nodeB=self.own,
+        ))
+        if dir == 'forward':
+            self.net.metadata.entanglement_log.append(EntanglementLogEntry(
+                self.net.metadata.entanglement_log_timestamps[transmit_to_teleport.id],
+                ent_t=EntanglementLogEntry.ent_type.VLINK,
+                status=EntanglementLogEntry.status_type.END2END,
+                instruction=EntanglementLogEntry.instruction_type.DELETE,
+                nodeA=self.own,
+                nodeB=forward_node,
+            ))
+        else:
+            self.net.metadata.entanglement_log.append(EntanglementLogEntry(
+                self.net.metadata.entanglement_log_timestamps[transmit_to_teleport.id],
+                ent_t=EntanglementLogEntry.ent_type.VLINK,
+                status=EntanglementLogEntry.status_type.END2END,
+                instruction=EntanglementLogEntry.instruction_type.DELETE,
+                nodeA=forward_node,
+                nodeB=self.own,
+            ))
+
 
         # treat this same way as physical qubit transmission by sending recvqubitevent
         send_event = RecvQubitOverVL(self._simulator.current_time, qubit=new_epr, src=backward_node, dest=forward_node, vlink_transmit_id=vlink_transmit.id, by=self) # no delay on vlinks, just use current time

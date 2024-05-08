@@ -36,14 +36,16 @@ class VLMaintenanceApp(VLApp):
     def _success(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         self.log_trans(simple_colors.magenta(f'established vlink ({self.own.name}, {src_node.name})'), transmit=transmit)
         self.net.metadata.vlink_count += 1
-        # for plotting
-        #self.net.entanglement_log.append(EntanglementLogEntry(
-            ##type=EntanglementLogEntry.ent_type.VLINK,
-            #status=EntanglementLogEntry.status_type.END2END,
-            #instruction=EntanglementLogEntry.instruction_type.CREATE,
-            #nodeA=self.own,
-            #nodeB=src_node,
-        #))
+
+        self.net.metadata.entanglement_log.append(EntanglementLogEntry(
+            timestamp=0,
+            ent_t=EntanglementLogEntry.ent_type.VLINK,
+            status=EntanglementLogEntry.status_type.END2END,
+            instruction=EntanglementLogEntry.instruction_type.CREATE,
+            nodeA=self.own,
+            nodeB=src_node,
+        ))
+        self.net.metadata.entanglement_log_timestamps[transmit.id] += 1
 
         self.own.vlink_buf.put_nowait(transmit)
         src_node.vlink_buf.put_nowait(transmit)

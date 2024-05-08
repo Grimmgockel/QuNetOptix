@@ -67,15 +67,6 @@ class NetworkOracle():
         self._sim.run()
         metadata.remaining_memory_usage = sum(1 for node in self._net.nodes for app in node.apps if app.memory._usage > 0)
 
-        '''
-        entries = [(app.own, app, entry) for node in self._net.nodes 
-                                    for app in node.apps 
-                                    for entry in app.memory._storage 
-                                    if entry is not None]
-        for own, app, entry in entries:
-            print(f'{own} ({app}): {entry}\tsrc={entry.account.src};dst={entry.account.dst}')
-        '''
-
         if monitor: 
             self.data = pd.concat([self.data, self._monitor.data], ignore_index=True)
 
@@ -101,58 +92,5 @@ class NetworkOracle():
         throughput = float(agg_success_count) / s.te.sec
         return throughput
 
-    def entanglement_animation(self):
-        ga = GraphAnimation(self._net.physical_graph.graph, self._net.metadata.entanglement_log)
-        plt.show(block=False)
-        plt.pause(float(ga.frame_count*ga.interval)/1000)
-        plt.close(ga.fig)
-
-        ga.anim.save('no_vlink_demo.gif', writer='ffmpeg')
-
-
-    def generate_dot_file(self, filename: str, lvl=0):
-        '''
-        Vizualize network level as dot file (https://arxiv.org/abs/2306.05982)
-        '''
-        if lvl not in range(3):
-            print("Invalid plot level")
-            return
-
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        dot_file_path = os.path.join(script_dir, filename)
-
-        with open(dot_file_path, 'w') as f:
-            f.write('graph {\n')
-
-            if lvl in [0, 1]:
-                for node in self._net.nodes:
-                    f.write(f'{node.name} [label="{node.name}"];\n')
-                f.write('\n')
-
-                for qchannel in self._net.qchannels:
-                    f.write(f'{qchannel.node_list[0].name}--{qchannel.node_list[1].name};\n')
-
-            f.write('\n')
-
-            if lvl == 1:
-                for vlink in self._net.vlinks:
-                    f.write(f'{vlink.src.name}--{vlink.dest.name} [color=purple penwidth=5 constraint=False];\n')
-
-            if lvl == 2:
-                for vlink in self._net.vlinks:
-                    src = vlink.src
-                    dest = vlink.dest
-                    f.write(f'{src.name} [label="{src.name}"];\n')
-                    f.write(f'{dest.name} [label="{dest.name}"];\n')
-                    f.write(f'{src.name}--{dest.name} [color=purple penwidth=5 constraint=False];\n')
-                    f.write('\n')
-
-            if lvl == 0:
-                for req in self._net.requests:
-                    path = self._net.query_route(src=req.src, dest=req.dest)[0][-1]
-                    for src, dest in zip(path, path[1:]):
-                        f.write(f'{src.name}--{dest.name} [color=red penwidth=1 constraint=False];\n')
-
-            f.write('}')
-
-
+    def entanglement_animation(self, filename: str, fps: int) -> GraphAnimation:
+        return GraphAnimation(filename, fps, self._net.physical_graph.graph, self._net.metadata.entanglement_log)

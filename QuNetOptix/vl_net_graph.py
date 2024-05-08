@@ -82,7 +82,7 @@ class VLNetGraph():
 
 
 class GraphAnimation():
-    def __init__(self, G: nx.Graph, entanglement_log: List[EntanglementLogEntry]) -> None:
+    def __init__(self, filename: str, fps: int, G: nx.Graph, entanglement_log: List[EntanglementLogEntry]) -> None:
         # backlog for animation
         self.entanglement_log: List[EntanglementLogEntry] = entanglement_log
 
@@ -118,6 +118,7 @@ class GraphAnimation():
         self.frame_count += 2
 
         self.anim = FuncAnimation(self.fig, self.update, interval=self.interval, frames=self.frame_count)
+        self.anim.save(filename=filename, writer='ffmpeg', fps=fps)
         self.draw_physical()
 
     def update(self, frame):
@@ -145,28 +146,34 @@ class GraphAnimation():
                         else:
                             pass
                     elif entry.instruction == EntanglementLogEntry.instruction_type.DELETE:
-                        if entry.status == EntanglementLogEntry.status_type.INTERMEDIATE:
-                            self.entanglement_edges.remove((entry.nodeA.name, entry.nodeB.name))
-                        elif entry.status == EntanglementLogEntry.status_type.END2END:
-                            self.entanglement_edges_e2e.remove((entry.nodeA.name, entry.nodeB.name))
-                        else:
+                        try:
+                            if entry.status == EntanglementLogEntry.status_type.INTERMEDIATE:
+                                self.entanglement_edges.remove((entry.nodeA.name, entry.nodeB.name))
+                            elif entry.status == EntanglementLogEntry.status_type.END2END:
+                                self.entanglement_edges_e2e.remove((entry.nodeA.name, entry.nodeB.name))
+                            else:
+                                pass
+                        except ValueError:
                             pass
                     else: # invalid instruction
                         pass
                 if entry.ent_t == EntanglementLogEntry.ent_type.VLINK:
                     if entry.instruction == EntanglementLogEntry.instruction_type.CREATE:
                         if entry.status == EntanglementLogEntry.status_type.INTERMEDIATE:
-                            self.entanglement_edges.append((entry.nodeA.name, entry.nodeB.name))
+                            self.vlink_edges.append((entry.nodeA.name, entry.nodeB.name))
                         elif entry.status == EntanglementLogEntry.status_type.END2END:
-                            self.entanglement_edges_e2e.append((entry.nodeA.name, entry.nodeB.name))
+                            self.vlink_edges_e2e.append((entry.nodeA.name, entry.nodeB.name))
                         else:
                             pass
                     elif entry.instruction == EntanglementLogEntry.instruction_type.DELETE:
-                        if entry.status == EntanglementLogEntry.status_type.INTERMEDIATE:
-                            self.entanglement_edges.remove((entry.nodeA.name, entry.nodeB.name))
-                        elif entry.status == EntanglementLogEntry.status_type.END2END:
-                            self.entanglement_edges_e2e.remove((entry.nodeA.name, entry.nodeB.name))
-                        else:
+                        try:
+                            if entry.status == EntanglementLogEntry.status_type.INTERMEDIATE:
+                                self.vlink_edges.remove((entry.nodeA.name, entry.nodeB.name))
+                            elif entry.status == EntanglementLogEntry.status_type.END2END:
+                                self.vlink_edges_e2e.remove((entry.nodeA.name, entry.nodeB.name))
+                            else:
+                                pass
+                        except ValueError:
                             pass
                     else: # invalid instruction
                         pass

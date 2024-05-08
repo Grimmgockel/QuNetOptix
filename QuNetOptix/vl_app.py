@@ -223,16 +223,17 @@ class VLApp(ABC, Application):
             self.log_trans(f"stored qubit {epr.name}", transmit=updated_transmit)
 
         # for plotting
-        ent_type = EntanglementLogEntry.ent_type.ENT if self.app_name == 'distro' else EntanglementLogEntry.ent_type.VLINK
-        self.net.metadata.entanglement_log.append(EntanglementLogEntry(
-            self.net.metadata.entanglement_log_timestamps[updated_transmit.id],
-            ent_t=ent_type,
-            status=EntanglementLogEntry.status_type.INTERMEDIATE,
-            instruction=EntanglementLogEntry.instruction_type.CREATE,
-            nodeA=src_node,
-            nodeB=self.own,
-        ))
-        self.net.metadata.entanglement_log_timestamps[updated_transmit.id] += 1
+        if self.app_name == 'distro':
+            ent_type = EntanglementLogEntry.ent_type.ENT if self.app_name == 'distro' else EntanglementLogEntry.ent_type.VLINK
+            self.net.metadata.entanglement_log.append(EntanglementLogEntry(
+                self.net.metadata.entanglement_log_timestamps[updated_transmit.id],
+                ent_t=ent_type,
+                status=EntanglementLogEntry.status_type.INTERMEDIATE,
+                instruction=EntanglementLogEntry.instruction_type.CREATE,
+                nodeA=src_node,
+                nodeB=self.own,
+            ))
+            self.net.metadata.entanglement_log_timestamps[updated_transmit.id] += 1
 
         # if storage successful
         self.send_control(cchannel, src_node, updated_transmit, 'swap', self.app_name)
@@ -299,33 +300,35 @@ class VLApp(ABC, Application):
             self.log_trans(f'consumed: {first} and {second} | new: {new_epr}', transmit=transmit)
 
             # for plotting 
-            ent_type = EntanglementLogEntry.ent_type.ENT if self.app_name == 'distro' else EntanglementLogEntry.ent_type.VLINK
-            status = EntanglementLogEntry.status_type.INTERMEDIATE if forward_node is not transmit.dst else EntanglementLogEntry.status_type.END2END
-            self.net.metadata.entanglement_log.append(EntanglementLogEntry(
-                self.net.metadata.entanglement_log_timestamps[transmit.id],
-                ent_t=ent_type,
-                status=status,
-                instruction=EntanglementLogEntry.instruction_type.CREATE,
-                nodeA=backward_node,
-                nodeB=forward_node,
-            ))
-            self.net.metadata.entanglement_log.append(EntanglementLogEntry(
-                self.net.metadata.entanglement_log_timestamps[transmit.id],
-                ent_t=ent_type,
-                status=EntanglementLogEntry.status_type.INTERMEDIATE,
-                instruction=EntanglementLogEntry.instruction_type.DELETE,
-                nodeA=backward_node,
-                nodeB=self.own,
-            ))
-            self.net.metadata.entanglement_log.append(EntanglementLogEntry(
-                self.net.metadata.entanglement_log_timestamps[transmit.id],
-                ent_t=ent_type,
-                status=EntanglementLogEntry.status_type.INTERMEDIATE,
-                instruction=EntanglementLogEntry.instruction_type.DELETE,
-                nodeA=self.own,
-                nodeB=forward_node,
-            ))
-            self.net.metadata.entanglement_log_timestamps[transmit.id] += 1
+            if self.app_name == 'distro':
+                ent_type = EntanglementLogEntry.ent_type.ENT if self.app_name == 'distro' else EntanglementLogEntry.ent_type.VLINK
+                status = EntanglementLogEntry.status_type.INTERMEDIATE if forward_node is not transmit.dst else EntanglementLogEntry.status_type.END2END
+                self.net.metadata.entanglement_log.append(EntanglementLogEntry(
+                    self.net.metadata.entanglement_log_timestamps[transmit.id],
+                    ent_t=ent_type,
+                    status=status,
+                    instruction=EntanglementLogEntry.instruction_type.CREATE,
+                    nodeA=backward_node,
+                    nodeB=forward_node,
+                ))
+                self.net.metadata.entanglement_log.append(EntanglementLogEntry(
+                    self.net.metadata.entanglement_log_timestamps[transmit.id],
+                    ent_t=ent_type,
+                    status=EntanglementLogEntry.status_type.INTERMEDIATE,
+                    instruction=EntanglementLogEntry.instruction_type.DELETE,
+                    nodeA=backward_node,
+                    nodeB=self.own,
+                ))
+                self.net.metadata.entanglement_log.append(EntanglementLogEntry(
+                    self.net.metadata.entanglement_log_timestamps[transmit.id],
+                    ent_t=ent_type,
+                    status=EntanglementLogEntry.status_type.INTERMEDIATE,
+                    instruction=EntanglementLogEntry.instruction_type.DELETE,
+                    nodeA=self.own,
+                    nodeB=forward_node,
+                ))
+                self.net.metadata.entanglement_log_timestamps[transmit.id] += 1
+
 
         # send next
         self.send_control(src_cchannel, src_node, transmit, 'next', self.app_name)
