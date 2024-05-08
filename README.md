@@ -1,4 +1,4 @@
-# QuNetOptix - *Effects of pre-distributed entanglement in quantum networks*
+# QuNetOptix - *Effects of pre-distributed Entanglement in Quantum Networks*
 
 TODO.
 
@@ -16,3 +16,24 @@ TODO.
 
 TODO.
 
+## Proof of Concept *(line topology)*
+
+TODO.
+
+<div style="display: flex; justify-content: space-around;">
+    <img src="" width="24%" style="border: 1px solid #333333"/>
+    <img src="" width="24%" style="border: 1px solid #333333"/>
+    <img src="" width="24%" style="border: 1px solid #333333"/>
+    <img src="" width="24%" style="border: 1px solid #333333"/>
+</div>
+
+<div style="display: flex; justify-content: space-around;">
+    <img src="" width="24%" style="border: 1px solid #333333"/>
+    <img src="" width="24%" style="border: 1px solid #333333"/>
+    <img src="" width="24%" style="border: 1px solid #333333"/>
+    <img src="" width="24%" style="border: 1px solid #333333"/>
+</div>
+
+TODO.
+
+## Virtual Link Selection
