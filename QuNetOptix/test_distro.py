@@ -2,7 +2,7 @@ from vl_topo import CustomDoubleStarTopology
 from config import Config, Job
 from typing import List
 from vlaware_qnode import Transmit
-from metadata import MetaData, DistroResult
+from metadata import SimData, DistroResult
 from qns.models.core import QuantumModel
 from oracle import NetworkOracle
 
@@ -47,7 +47,7 @@ def oracle():
 ])
 def test_physical_sessions(oracle, config, job):
     config.job = Job.custom(sessions=[job])
-    meta_data: MetaData = oracle.run(config, continuous_distro=False, n_vlinks=0, monitor=False)
+    meta_data: SimData = oracle.run(config, continuous_distro=False, n_vlinks=0, monitor=False)
 
     for transmit_id, distro_result in meta_data.distro_results.items():
         result_assertions(transmit_id, distro_result)
@@ -69,7 +69,7 @@ def test_physical_sessions(oracle, config, job):
 ])
 def test_isolated_sessions(oracle, config, job):
     config.job = Job.custom(sessions=[job])
-    meta_data: MetaData = oracle.run(config, continuous_distro=False, n_vlinks=1, monitor=False)
+    meta_data: SimData = oracle.run(config, continuous_distro=False, n_vlinks=1, monitor=False)
 
     for transmit_id, distro_result in meta_data.distro_results.items():
         result_assertions(transmit_id, distro_result)
@@ -144,7 +144,7 @@ def test_parallel_sessions(oracle, config, sessions, vlink_send_rate, distro_sen
     config.job = Job.custom(sessions=sessions)
     config.vlink_send_rate = vlink_send_rate
     config.send_rate = distro_send_rate
-    meta_data: MetaData = oracle.run(config, continuous_distro=False, n_vlinks=len(sessions), monitor=False)
+    meta_data: SimData = oracle.run(config, continuous_distro=False, n_vlinks=len(sessions), monitor=False)
 
     for transmit_id, distro_result in meta_data.distro_results.items():
         result_assertions(transmit_id, distro_result)
@@ -161,7 +161,7 @@ def test_max_congestion(oracle, config):
     config.vlink_send_rate = 20
     config.send_rate = 2
 
-    meta_data: MetaData = oracle.run(config, continuous_distro=False, n_vlinks=len(sessions), monitor=False)
+    meta_data: SimData = oracle.run(config, continuous_distro=False, n_vlinks=len(sessions), monitor=False)
 
     for transmit_id, distro_result in meta_data.distro_results.items():
         result_assertions(transmit_id, distro_result)
@@ -174,16 +174,16 @@ def test_max_congestion(oracle, config):
 @pytest.mark.parametrize('vlink_send_rate', [5, 10, 20])
 @pytest.mark.parametrize('sessions_count', range(1, 7))
 def test_random_continuous_requests(oracle, config, send_rate, vlink_send_rate, sessions_count):
-    # TODO set long sim duration
     config.te = 50
     config.job = Job.random(session_count=sessions_count)
     config.send_rate = send_rate
     config.vlink_send_rate = vlink_send_rate
 
-    meta_data: MetaData = oracle.run(config, continuous_distro=True, monitor=False)
+    meta_data: SimData = oracle.run(config, continuous_distro=True, monitor=False)
     for transmit_id, distro_result in meta_data.distro_results.items():
         result_assertions(transmit_id, distro_result)
 
 # TODO test revoke
 # TODO test waxman topology
+# TODO custom vlink (n2, n9)
 

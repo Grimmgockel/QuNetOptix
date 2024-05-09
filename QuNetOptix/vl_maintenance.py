@@ -35,7 +35,7 @@ class VLMaintenanceApp(VLApp):
 
     def _success(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         self.log_trans(simple_colors.magenta(f'established vlink ({self.own.name}, {src_node.name})'), transmit=transmit)
-        self.net.metadata.vlink_count += 1
+        self.success_count += 1
 
         self.net.metadata.entanglement_log.append(EntanglementLogEntry(
             timestamp=0,

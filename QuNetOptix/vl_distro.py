@@ -47,9 +47,12 @@ class VLEnabledDistributionApp(VLApp):
         result_epr: QuantumModel = self.memory.read(transmit.charlie.name)
         self.log_trans(simple_colors.green(f"successful distribution of [result_epr={result_epr}]"), transmit=transmit)
 
-        # meta data
+        # KPIs
         self.net.metadata.distro_results[transmit.id].src_result = (transmit, result_epr)
-        self.net.metadata.success_count += 1
+        self.success_count += 1
+        gen_latency: float = self._simulator.current_time.sec - transmit.start_time_s
+        self.generation_latency_agg += gen_latency
+        print(f'GEN LATENCY: {gen_latency}')
 
         # clear transmission
         self.own.trans_registry[transmit.id] = None

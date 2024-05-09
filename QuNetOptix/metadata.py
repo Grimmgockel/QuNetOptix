@@ -1,9 +1,11 @@
 from dataclasses import dataclass
 from typing import List, Set, Dict, Tuple, Optional
 from vlaware_qnode import Transmit
+import pandas as pd
 from qns.network.requests import Request
 from vl_net_graph import EntanglementLogEntry
 from qns.models.core import QuantumModel
+
 
 @dataclass
 class DistroResult:
@@ -11,15 +13,10 @@ class DistroResult:
     dst_result: Optional[Tuple[Transmit, QuantumModel]] = None
 
 @dataclass
-class MetaData:
+class SimData:
     '''
     This is per simulation run.
     '''
-    # data
-    send_count: int = 0
-    success_count: int = 0
-    vlink_count: int = 0
-
     # plotting
     entanglement_log: List[EntanglementLogEntry] = None
     entanglement_log_timestamps: Dict[str, int] = None
@@ -28,7 +25,18 @@ class MetaData:
     distribution_requests: Set[Request] = None
     vlink_requests: Set[Request] = None
     distro_results: Dict[str, DistroResult] = None
-    remaining_memory_usage: int = 0
+
+    # sim performance data
+    df = pd.DataFrame()
+
+    @property
+    def remaining_mem_usage(self) -> int:
+        return 0
+
+    @property
+    def success_rate(self) -> float:
+        # TODO success count / send count
+        return 0.0
 
     @property
     def throughput(self) -> float:

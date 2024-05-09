@@ -161,8 +161,7 @@ class GraphAnimation():
                         if entry.status == EntanglementLogEntry.status_type.INTERMEDIATE:
                             self.vlink_edges.append((entry.nodeA.name, entry.nodeB.name))
                         elif entry.status == EntanglementLogEntry.status_type.END2END:
-                            if not self.vlink_edges_e2e:
-                                self.vlink_edges_e2e.append((entry.nodeA.name, entry.nodeB.name))
+                            self.vlink_edges_e2e.append((entry.nodeA.name, entry.nodeB.name))
                         else:
                             pass
                     elif entry.instruction == EntanglementLogEntry.instruction_type.DELETE:
@@ -170,8 +169,7 @@ class GraphAnimation():
                             if entry.status == EntanglementLogEntry.status_type.INTERMEDIATE:
                                 self.vlink_edges.remove((entry.nodeA.name, entry.nodeB.name))
                             elif entry.status == EntanglementLogEntry.status_type.END2END:
-                                #self.vlink_edges_e2e.remove((entry.nodeA.name, entry.nodeB.name))
-                                pass
+                                self.vlink_edges_e2e.remove((entry.nodeA.name, entry.nodeB.name))
                             else:
                                 pass
                         except ValueError:

@@ -1,4 +1,4 @@
-# QuNetOptix - *Effects of pre-distributed Entanglement in Quantum Networks*
+# **QuNetOptix** - *Effects of pre-distributed Entanglement in Quantum Networks*
 
 TODO.
 
