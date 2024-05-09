@@ -38,6 +38,10 @@ from qns.entity.memory import QuantumMemory
 # - decoherence_rate
 # - store_error_model
 
+# MISC 
+# - vlink to distro send_rate ratio
+
+
 # TODO implement basic proof of concept 'poc.py' for shortcut links, where paths with increasing lengths are shortcutted and EP are constantly distributed
 # TODO save experiments into results.csv
 # TODO look into docs for multicore sim
