@@ -139,7 +139,7 @@ class VLApp(ABC, Application):
         )
         self.own.trans_registry[epr.account.transmit_id] = transmit
         self.net.metadata.entanglement_log_timestamps[transmit.id] = 0 # plotting
-        self.log_trans(f'start new ep distribution: {transmit.src} -> {transmit.dst} \t[{epr}]', transmit=transmit)
+        self.log_trans(f'start new ep distribution: {transmit.src} -> {transmit.dst} [epr={epr.name}]', transmit=transmit)
 
         store_success = self.memory.write(epr)
         if not store_success:
@@ -178,7 +178,7 @@ class VLApp(ABC, Application):
             self._vlink(next_hop, None, None)
             return
 
-        self.log_trans(f'physical transmission of qubit to {next_hop}\t[{epr}]', transmit=transmit)
+        self.log_trans(f'physical transmission of qubit {epr.name} to {next_hop}', transmit=transmit)
         qchannel: QuantumChannel = self.own.get_qchannel(next_hop)
         if qchannel is None:
             raise Exception(f"{self}: No such quantum channel.")
@@ -296,7 +296,6 @@ class VLApp(ABC, Application):
             self.own.trans_registry[transmit.id] = None
 
             self.log_trans(f'performed swap (({backward_node.name}, {self.own.name}) - ({self.own.name}, {forward_node.name})) -> ({backward_node.name}, {forward_node.name})', transmit=transmit)
-            self.log_trans(f'consumed: {first} and {second} | new: {new_epr}', transmit=transmit)
 
             # for plotting 
             ent_type = EntanglementLogEntry.ent_type.ENT if self.app_name == 'distro' else EntanglementLogEntry.ent_type.VLINK

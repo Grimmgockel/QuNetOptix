@@ -9,14 +9,41 @@ from vl_topo import CustomDoubleStarTopology, CustomLineTopology
 from typing import List
 import matplotlib.pyplot as plt
 
-# TODO REFACTOR swapping code still duplicate
-# TODO a lot of clunky plotting code left in the application classes
+# TODO FOR NAVIGATION
+from qns.models.epr import BaseEntanglement, BellStateEntanglement, MixedStateEntanglement, WernerStateEntanglement
+from qns.models.delay import DelayModel, NormalDelayModel, UniformDelayModel, ConstantDelayModel
+from qns.entity.cchannel import ClassicChannel
+from qns.entity.qchannel import QuantumChannel, QubitLossChannel
+from qns.entity.memory import QuantumMemory
+# TODO i need all the hardware params now - LOOK AT GUUS DISSERTATION
+# QubitLossChannel
+# - bandwidth
+# - delay
+# - p_init
+# - attenuation_rate
+# - max_buffer_size
+# - length
+# - decoherence_rate
+# - store_error_model
+
+# ClassicChannel
+# - bandwidth
+# - delay
+# - drop_rate
+# - max_buffer_size
+# - length
+
+# QuantumMemory
+# - delay
+# - decoherence_rate
+# - store_error_model
 
 # TODO implement basic proof of concept 'poc.py' for shortcut links, where paths with increasing lengths are shortcutted and EP are constantly distributed
-# TODO entanglement tracker (observer pattern) -> animation??
-# TODO plot networkx pretty
 # TODO save experiments into results.csv
 # TODO look into docs for multicore sim
+
+# TODO REFACTOR swapping code still duplicate
+# TODO a lot of clunky plotting code left in the application classes
 
 # TODO implement vlink selection
 # TODO implement custom waxman topology
@@ -25,16 +52,15 @@ import matplotlib.pyplot as plt
 if __name__ == '__main__': 
     oracle = NetworkOracle()
 
-
     #for i in range(5, 16):
     nodes_number = 10
     config = Config(
         ts=0,
         te=10,
-        acc=1000000,
-        vlink_send_rate=5,
-        send_rate=5,
-        topo = CustomLineTopology(nodes_number=nodes_number),
+        acc=10000000000000,
+        vlink_send_rate=10,
+        send_rate=10,
+        topo=CustomLineTopology(nodes_number=nodes_number),
     )
     test_sessions: List[Job] = [
         ('n1', f'n{nodes_number}'), 

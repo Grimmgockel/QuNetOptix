@@ -5,12 +5,17 @@ from qns.network.topology.linetopo import LineTopology
 from vlaware_qnode import VLAwareQNode
 from vl_maintenance import VLMaintenanceApp
 from vl_distro import VLEnabledDistributionApp
+from qns.models.delay import NormalDelayModel, DelayModel, ConstantDelayModel, UniformDelayModel
 
 from typing import Dict, List, Tuple
 
+
+light_speed = 299791458
+length = 0.5
+
 class CustomLineTopology(LineTopology):
     def __init__(self, nodes_number):
-        super().__init__(nodes_number, nodes_apps=[VLEnabledDistributionApp(), VLMaintenanceApp()], memory_args=[{'capacity': 1000}])
+        super().__init__(nodes_number, nodes_apps=[VLEnabledDistributionApp(), VLMaintenanceApp()], memory_args=[{'capacity': 1000}], cchannel_args={'delay': length/light_speed})
 
     def build(self) -> Tuple[List[VLAwareQNode], List[QuantumChannel]]:
         nl: List[VLAwareQNode] = []
@@ -22,7 +27,7 @@ class CustomLineTopology(LineTopology):
         for i in range(self.nodes_number - 1):
             n = VLAwareQNode(f"n{i+2}")
             nl.append(n)
-            link = QuantumChannel(name=f"l{i+1}", **self.qchannel_args)
+            link = QuantumChannel(name=f"l{i+1}", delay=length/light_speed)
             ll.append(link)
 
             pn.add_qchannel(link)

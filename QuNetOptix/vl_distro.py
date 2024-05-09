@@ -52,7 +52,10 @@ class VLEnabledDistributionApp(VLApp):
         self.success_count += 1
         gen_latency: float = self._simulator.current_time.sec - transmit.start_time_s
         self.generation_latency_agg += gen_latency
-        print(f'GEN LATENCY: {gen_latency}')
+
+        #print(f'STARTING TIME: {transmit.start_time_s}')
+        #print(f'CURRENT TIME: {self._simulator.current_time.sec}')
+        #print(f'GEN LATENCY: {gen_latency}')
 
         # clear transmission
         self.own.trans_registry[transmit.id] = None
@@ -112,7 +115,6 @@ class VLEnabledDistributionApp(VLApp):
         forward_node_app.set_alice(new_epr, first, second, used_vlink=vlink_transmit)
         backward_node_app.set_charlie(new_epr, first, second, used_vlink=vlink_transmit)
         self.log_trans(f'performed swap using vlink (({backward_node.name}, {self.own.name}) - ({self.own.name}, {forward_node.name})) -> ({backward_node.name}, {forward_node.name})', transmit=transmit_to_teleport)
-        self.log_trans(f'consumed: {first} and {second} | new: {new_epr}', transmit=transmit_to_teleport)
 
         # clean up after vlink usage
         if backward_node != self.own:
