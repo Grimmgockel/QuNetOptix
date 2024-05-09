@@ -15,7 +15,12 @@ Pre-established entanglement functions similar to a one-time, unidirectional qua
 </div>
 
 
-## Proof of Concept *(line topology)*
+## Proof of Concept 
+
+To demonstrate the concept, **throughput** (EP/s) in line topologies of varying lengths will be analyzed. 
+The first and last nodes will serve as source and destination for endpoint distribution, while the second and second-to-last nodes will act as source and destination for virtual links. 
+Beginning with a length of 4 nodes, where virtual link usage is equivalent to non-usage, node count will be incrementally increased. 
+With each additional node, virtual link-enabled routing will bypass one more node compared to standard routing.
 
 <div style="display: flex; justify-content: space-around;">
     <img src="https://i.imgur.com/sp0IBtm.gif" width="24%" style="border: 1px solid #333333"/>
@@ -31,9 +36,5 @@ Pre-established entanglement functions similar to a one-time, unidirectional qua
     <img src="https://i.imgur.com/V3CYkR1.gif" width="24%" style="border: 1px solid #333333"/>
 </div>
 
-To demonstrate the concept, **throughput** (EP/s) in line topologies of varying lengths will be analyzed. 
-The first and last nodes will serve as source and destination for endpoint distribution, while the second and second-to-last nodes will act as source and destination for virtual links. 
-Beginning with a length of 4 nodes, where virtual link usage is equivalent to non-usage, node count will be incrementally increased. 
-With each additional node, virtual link-enabled routing will bypass one more node compared to standard routing.
 
 ## Virtual Link Selection
