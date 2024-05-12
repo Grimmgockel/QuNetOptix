@@ -181,8 +181,6 @@ def test_max_congestion(oracle: NetworkOracle, config: Config):
     assert meta_data.remaining_mem_usage == 0
 
 
-
-'''
 @pytest.mark.parametrize('send_rate', [5, 10, 20])
 @pytest.mark.parametrize('vlink_send_rate', [5, 10, 20])
 @pytest.mark.parametrize('sessions_count', range(1, 7))
@@ -196,7 +194,6 @@ def test_random_continuous_requests(oracle, config, send_rate, vlink_send_rate, 
     meta_data: SimData = oracle.run(config)
     for transmit_id, distro_result in meta_data.distro_results.items():
         result_assertions(transmit_id, distro_result)
-'''
 
 # TODO test revoke
 # TODO test waxman topology

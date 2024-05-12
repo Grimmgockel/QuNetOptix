@@ -213,7 +213,8 @@ class VLApp(ABC, Application):
         if not storage_success_1 or not storage_success_2:
             # revoke distribution
             self.memory.read(epr)
-            self.memory.read(forward_epr)
+            if self.own is not epr.account.dst:
+                self.memory.read(forward_epr)
             self.send_control(cchannel, src_node, updated_transmit, 'revoke', self.app_name)
             self.own.trans_registry[updated_transmit.id] = None # clear
             return
