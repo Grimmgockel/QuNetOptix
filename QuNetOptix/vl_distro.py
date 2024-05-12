@@ -53,43 +53,38 @@ class VLEnabledDistributionApp(VLApp):
         gen_latency: float = self._simulator.current_time.sec - transmit.start_time_s
         self.generation_latency_agg += gen_latency
 
-        #print(f'STARTING TIME: {transmit.start_time_s}')
-        #print(f'CURRENT TIME: {self._simulator.current_time.sec}')
-        #print(f'GEN LATENCY: {gen_latency}')
-
         # clear transmission
         self.own.trans_registry[transmit.id] = None
         return
 
     # # TODO abstract the swapping process, this can probably go into _swap so use classic comm
     def _vlink(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        if self.own.waiting_for_vlink_buf.empty(): 
-            raise Exception("Race condition probably :)")
-
-        try:
-            transmit_to_teleport: Transmit = self.own.waiting_for_vlink_buf.get_nowait()
-            vlink_transmit: Transmit = self.own.vlink_buf.get_nowait()
-
-            dir = 'backward' if self.own == vlink_transmit.dst else 'forward'
-            if dir == 'forward':
-                other_side: Transmit = vlink_transmit.dst.vlink_buf.get_nowait() # remove from other side
-                if transmit_to_teleport.alice is None and vlink_transmit.src == transmit_to_teleport.src: # start node is vlink node forward if alice is none
-                    first = self.memory.read(transmit_to_teleport.charlie.name) 
-                else:
-                    first = self.memory.read(transmit_to_teleport.alice.name) 
-            if dir == 'backward':
-                other_side: Transmit = vlink_transmit.src.vlink_buf.get_nowait() # remove from other side
-                if transmit_to_teleport.alice is None and vlink_transmit.dst == transmit_to_teleport.src: # start node is vlink node forward if alice is none
-                    first = self.memory.read(transmit_to_teleport.charlie.name)
-                else:
-                    first = self.memory.read(transmit_to_teleport.alice.name)
-        except Exception:
+        if self.own.waiting_for_vlink_buf.empty() or self.own.vlink_buf.empty(): # someone else was faster
             return
+            #raise Exception("Race condition probably :)")
+
+        transmit_to_teleport: Transmit = self.own.waiting_for_vlink_buf.get_nowait()
+        vlink_transmit: Transmit = self.own.vlink_buf.get_nowait()
+
+
+        dir = 'backward' if self.own == vlink_transmit.dst else 'forward'
+        if dir == 'forward':
+            other_side: Transmit = vlink_transmit.dst.vlink_buf.get_nowait() # remove from other side
+            if transmit_to_teleport.alice is None and vlink_transmit.src == transmit_to_teleport.src: # start node is vlink node forward if alice is none
+                first = self.memory.read(transmit_to_teleport.charlie.name) 
+            else:
+                first = self.memory.read(transmit_to_teleport.alice.name) 
+        if dir == 'backward':
+            other_side: Transmit = vlink_transmit.src.vlink_buf.get_nowait() # remove from other side
+            if transmit_to_teleport.alice is None and vlink_transmit.dst == transmit_to_teleport.src: # start node is vlink node forward if alice is none
+                first = self.memory.read(transmit_to_teleport.charlie.name)
+            else:
+                first = self.memory.read(transmit_to_teleport.alice.name)
 
         if other_side.id != vlink_transmit.id:
             raise ValueError("Removed wrong transmit from other side while using vlink")
 
-        second = self.memory.read(vlink_transmit.charlie.name) # TODO this is sometimes none with really scarce memory resources
+        second = self.memory.read(vlink_transmit.charlie.name) 
 
         # swap with vlink
         new_epr: self.entanglement_type = self.entanglement_type(first.swapping(second))
@@ -125,36 +120,6 @@ class VLEnabledDistributionApp(VLApp):
         vlink_transmit.dst.trans_registry[vlink_transmit.id]= None
         vlink_transmit.src.trans_registry[vlink_transmit.id]= None
         self.waiting_for_vlink = False
-
-        # for plotting
-        self.net.metadata.entanglement_log_timestamps[transmit_to_teleport.id] = self.net.metadata.entanglement_log_timestamps[vlink_transmit.id]
-        self.net.metadata.entanglement_log.append(EntanglementLogEntry(
-            self.net.metadata.entanglement_log_timestamps[transmit_to_teleport.id],
-            ent_t=EntanglementLogEntry.ent_type.ENT,
-            status=EntanglementLogEntry.status_type.INTERMEDIATE,
-            instruction=EntanglementLogEntry.instruction_type.DELETE,
-            nodeA=backward_node,
-            nodeB=self.own,
-        ))
-        if dir == 'forward':
-            self.net.metadata.entanglement_log.append(EntanglementLogEntry(
-                self.net.metadata.entanglement_log_timestamps[transmit_to_teleport.id],
-                ent_t=EntanglementLogEntry.ent_type.VLINK,
-                status=EntanglementLogEntry.status_type.END2END,
-                instruction=EntanglementLogEntry.instruction_type.DELETE,
-                nodeA=self.own,
-                nodeB=forward_node,
-            ))
-        else:
-            self.net.metadata.entanglement_log.append(EntanglementLogEntry(
-                self.net.metadata.entanglement_log_timestamps[transmit_to_teleport.id],
-                ent_t=EntanglementLogEntry.ent_type.VLINK,
-                status=EntanglementLogEntry.status_type.END2END,
-                instruction=EntanglementLogEntry.instruction_type.DELETE,
-                nodeA=forward_node,
-                nodeB=self.own,
-            ))
-
 
         # treat this same way as physical qubit transmission by sending recvqubitevent
         send_event = RecvQubitOverVL(self._simulator.current_time, qubit=new_epr, src=backward_node, dest=forward_node, vlink_transmit_id=vlink_transmit.id, by=self) # no delay on vlinks, just use current time

@@ -31,6 +31,9 @@ class Config:
     vlink_send_rate: float = 1
     send_rate: float = 1
     job: Job = None
+    continuous_distro: bool = True
+    vlinks: List[Tuple[str]] = None
+    schedule_n_vlinks: Optional[int] = None
 
     def __repr__(self):
         return f'Config(ts={self.ts}, te={self.te}, acc={self.acc}, send_rate={self.send_rate}, node_count={self.topo.nodes_number}, sessions={self.job.session_count}, job={self.job})'

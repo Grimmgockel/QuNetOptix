@@ -30,8 +30,17 @@ class SimData:
     df = pd.DataFrame()
 
     @property
+    def send_count(self) -> int:
+        return self.df['send_count'][0]
+
+    @property
+    def success_count(self) -> int:
+        return self.df['success_count'][0]
+
+    @property
     def remaining_mem_usage(self) -> int:
-        return 0
+        return self.df['remaining_mem_usage'][0]
+
 
     @property
     def success_rate(self) -> float:
@@ -40,7 +49,8 @@ class SimData:
 
     @property
     def throughput(self) -> float:
-        return 0.0
+        throughput_EPps = self.df['success_count'] / self.df['sim_time_s']
+        return throughput_EPps
 
     @property
     def generation_latency(self) -> float:

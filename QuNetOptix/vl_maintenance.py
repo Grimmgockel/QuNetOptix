@@ -52,11 +52,11 @@ class VLMaintenanceApp(VLApp):
 
         cchannel: Optional[ClassicChannel] = self.own.get_cchannel(src_node) 
 
+        # decide where to notify about new vlink
         src_waiting = not self.own.waiting_for_vlink_buf.empty()
         dst_waiting = not transmit.dst.waiting_for_vlink_buf.empty()
-
-        # decide where to notify about new vlink
         tgt: Optional[VLAwareQNode] = None
+
         if src_waiting and not dst_waiting:
             tgt = self.own
         elif not src_waiting and dst_waiting:

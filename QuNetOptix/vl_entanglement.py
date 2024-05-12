@@ -1,4 +1,4 @@
-from qns.models.epr import BellStateEntanglement
+from qns.models.epr import BellStateEntanglement, WernerStateEntanglement, MixedStateEntanglement, BaseEntanglement
 from vlaware_qnode import EprAccount
 
 

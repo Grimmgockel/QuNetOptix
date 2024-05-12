@@ -17,6 +17,11 @@ Pre-established entanglement functions similar to a one-time, unidirectional qua
 
 ## Proof of Concept 
 
+These links are one-time-use and need replenishing after they're used up.
+With the connection-oriented and resource-aware routing of ***citation***, we can have multiple virtual links ready at the source and destination of the shortcut.
+The setup of virtual links happens alongside the end-to-end distribution. 
+It's like parallelizing a part of the swapping algorithm often used for requests thus avoiding congestion on that subpath.
+
 To demonstrate the concept, **throughput** (EP/s) in line topologies of varying lengths will be analyzed. 
 The first and last nodes will serve as source and destination for endpoint distribution, while the second and second-to-last nodes will act as source and destination for virtual links. 
 Beginning with a length of 4 nodes, where virtual link usage is equivalent to non-usage, node count will be incrementally increased. 
@@ -36,5 +41,20 @@ With each additional node, virtual link-enabled routing will bypass one more nod
     <img src="https://i.imgur.com/V3CYkR1.gif" width="24%" style="border: 1px solid #333333"/>
 </div>
 
+In this setup, only the speed of light and link length will be considered. 
+Fiber-optic cables have infinite bandwidth, buffer size and no loss. 
+Quantum memories have no read or write delays, and there is no decoherence in both memories and links.
+
+<div style="display: flex; justify-content: space-around;">
+    <img src="https://i.imgur.com/RkVJX52.gif" width="49%" style="border: 1px solid #333333"/>
+    <img src="https://i.imgur.com/V3CYkR1.gif" width="49%" style="border: 1px solid #333333"/>
+</div>
+
 
 ## Virtual Link Selection
+
+todo
+
+## Performance on large Waxman Topologies
+
+todo

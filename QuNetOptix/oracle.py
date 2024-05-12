@@ -3,6 +3,7 @@ from qns.simulator.simulator import Simulator
 from qns.network.topology.topo import ClassicTopology
 from qns.entity.monitor import Monitor
 import qns.utils.log as log
+from typing import List, Tuple
 
 from vl_network import VLNetwork
 from vlaware_qnode import VLAwareQNode
@@ -24,7 +25,7 @@ class NetworkOracle():
         self._monitor: Optional[Monitor] = None
         self.data = pd.DataFrame()
 
-    def run(self, config: Config, loglvl: int = log.logging.INFO, continuous_distro: bool = True, schedule_n_vlinks: Optional[int] = None) -> SimData:
+    def run(self, config: Config, loglvl: int = log.logging.INFO) -> SimData:
 
         # Simulator
         self._sim = Simulator(config.ts, config.te, accuracy=config.acc)
@@ -35,7 +36,7 @@ class NetworkOracle():
 
         # Network
         metadata = SimData()
-        self._net: VLNetwork = VLNetwork(topo=config.topo, metadata=metadata, continuous_distro=continuous_distro, schedule_n_vlinks=schedule_n_vlinks, vlink_send_rate=config.vlink_send_rate)
+        self._net: VLNetwork = VLNetwork(topo=config.topo, metadata=metadata, continuous_distro=config.continuous_distro, schedule_n_vlinks=config.schedule_n_vlinks, custom_vlinks=config.vlinks, vlink_send_rate=config.vlink_send_rate)
         self._net.build_route()
         if config.job.sessions is None:
             self._net.random_requests(number=config.job.session_count, attr={'send_rate': config.send_rate})
@@ -82,36 +83,9 @@ class NetworkOracle():
     
         # run sim and concat data to pd dataframe
         self._sim.run()
-        #self.data = pd.concat([self.data, self._monitor.data], ignore_index=True)
 
         metadata.df = self._monitor.data
-        return metadata # TODO dont return it but dependency inject to concat the data
-
-    def _gather_mem_usage(self, s, n: VLAwareQNode, e):
-        remaining_memory_usage = 0
-        for app in n.apps:
-            remaining_memory_usage += app.memory._usage
-        return remaining_memory_usage
-
-    def _gather_gen_latency(self, s, n, e):
-        agg_gen_latency: float = 0.0
-        count: int = 0
-        for node in self._net.nodes:
-            if node.apps[0].generation_latency_avg > 0:
-                agg_gen_latency += node.apps[0].generation_latency_avg
-                count += 1
-        try:
-            running_avg: float = agg_gen_latency / count
-        except ZeroDivisionError:
-            return -1
-        return running_avg
-
-    def _gather_throughput(self, s, n, e):
-        agg_success_count = 0
-        for node in self._net.nodes:
-            agg_success_count += node.apps[0].success_count
-        throughput = float(agg_success_count) / s.te.sec
-        return throughput
+        return metadata 
 
     def entanglement_animation(self, filename: str, fps: int) -> GraphAnimation:
         return GraphAnimation(filename, fps, self._net.physical_graph.graph, self._net.metadata.entanglement_log)

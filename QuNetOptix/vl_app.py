@@ -175,6 +175,7 @@ class VLApp(ABC, Application):
                 self.log_trans(f'waiting for vlink on {self.own.name} to {next_hop.name}\t[{epr}]', transmit=transmit)
                 self.waiting_for_vlink = True
                 return
+            self.log_trans(f'using available vlink on {self.own.name} to {next_hop.name}\t[{epr}]', transmit=transmit)
             self._vlink(next_hop, None, None)
             return
 
@@ -221,18 +222,6 @@ class VLApp(ABC, Application):
             self.log_trans(f"stored qubit {epr.name} and {forward_epr.name}", transmit=updated_transmit)
         except UnboundLocalError:
             self.log_trans(f"stored qubit {epr.name}", transmit=updated_transmit)
-
-        # for plotting
-        ent_type = EntanglementLogEntry.ent_type.ENT if self.app_name == 'distro' else EntanglementLogEntry.ent_type.VLINK
-        self.net.metadata.entanglement_log.append(EntanglementLogEntry(
-            self.net.metadata.entanglement_log_timestamps[updated_transmit.id],
-            ent_t=ent_type,
-            status=EntanglementLogEntry.status_type.INTERMEDIATE,
-            instruction=EntanglementLogEntry.instruction_type.CREATE,
-            nodeA=src_node,
-            nodeB=self.own,
-        ))
-        self.net.metadata.entanglement_log_timestamps[updated_transmit.id] += 1
 
         # if storage successful
         self.send_control(cchannel, src_node, updated_transmit, 'swap', self.app_name)
@@ -297,41 +286,12 @@ class VLApp(ABC, Application):
 
             self.log_trans(f'performed swap (({backward_node.name}, {self.own.name}) - ({self.own.name}, {forward_node.name})) -> ({backward_node.name}, {forward_node.name})', transmit=transmit)
 
-            # for plotting 
-            ent_type = EntanglementLogEntry.ent_type.ENT if self.app_name == 'distro' else EntanglementLogEntry.ent_type.VLINK
-            status = EntanglementLogEntry.status_type.INTERMEDIATE if forward_node is not transmit.dst else EntanglementLogEntry.status_type.END2END
-            self.net.metadata.entanglement_log.append(EntanglementLogEntry(
-                self.net.metadata.entanglement_log_timestamps[transmit.id],
-                ent_t=ent_type,
-                status=status,
-                instruction=EntanglementLogEntry.instruction_type.CREATE,
-                nodeA=backward_node,
-                nodeB=forward_node,
-            ))
-            self.net.metadata.entanglement_log.append(EntanglementLogEntry(
-                self.net.metadata.entanglement_log_timestamps[transmit.id],
-                ent_t=ent_type,
-                status=EntanglementLogEntry.status_type.INTERMEDIATE,
-                instruction=EntanglementLogEntry.instruction_type.DELETE,
-                nodeA=backward_node,
-                nodeB=self.own,
-            ))
-            self.net.metadata.entanglement_log.append(EntanglementLogEntry(
-                self.net.metadata.entanglement_log_timestamps[transmit.id],
-                ent_t=ent_type,
-                status=EntanglementLogEntry.status_type.INTERMEDIATE,
-                instruction=EntanglementLogEntry.instruction_type.DELETE,
-                nodeA=self.own,
-                nodeB=forward_node,
-            ))
-            self.net.metadata.entanglement_log_timestamps[transmit.id] += 1
-
-
         # send next
         self.send_control(src_cchannel, src_node, transmit, 'next', self.app_name)
 
     def _next(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         if self.own == transmit.dst: # successful distribution
+            self.own.trans_registry[transmit.id] = transmit
             cchannel: Optional[ClassicChannel] = self.own.get_cchannel(transmit.src) 
 
             # meta data

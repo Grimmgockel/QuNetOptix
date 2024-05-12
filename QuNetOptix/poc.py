@@ -16,6 +16,13 @@ from qns.entity.cchannel import ClassicChannel
 from qns.entity.qchannel import QuantumChannel, QubitLossChannel
 from qns.entity.memory import QuantumMemory
 # TODO i need all the hardware params now - LOOK AT GUUS DISSERTATION
+# ClassicChannel
+# - bandwidth
+# - delay
+# - length
+# - drop_rate
+# - max_buffer_size
+
 # QubitLossChannel
 # - bandwidth
 # - delay
@@ -56,28 +63,30 @@ from qns.entity.memory import QuantumMemory
 if __name__ == '__main__': 
     oracle = NetworkOracle()
 
-    #for i in range(5, 16):
-    nodes_number = 10
-    config = Config(
-        ts=0,
-        te=10,
-        acc=10000000000000,
-        vlink_send_rate=10,
-        send_rate=10,
-        topo=CustomLineTopology(nodes_number=nodes_number),
-    )
-    test_sessions: List[Job] = [
-        ('n1', f'n{nodes_number}'), 
-    ]
-    config.job = Job.custom(sessions=test_sessions)
+    for i in range(5, 16):
+        nodes_number = i
+        config = Config(
+            ts=0,
+            te=10,
+            acc=10000000000000,
+            vlink_send_rate=10,
+            send_rate=10,
+            topo=CustomLineTopology(nodes_number=nodes_number),
+            job = Job.custom(sessions=[('n1', f'n{nodes_number-1}')]),
+            continuous_distro=False,
+            vlinks=[('n2', f'n{nodes_number-1}')],
+            schedule_n_vlinks=1,
+        )
 
-    metadata: SimData = oracle.run(config, loglvl=log.logging.DEBUG, continuous_distro=False, schedule_n_vlinks=1)
-    print(f'distros: {metadata.df['success_count'][0]}/{metadata.df['send_count'][0]}, vlinks: {metadata.df['vlink_success_count'][0]}/{metadata.df['vlink_send_count'][0]}')
-    print(f'remaining memory usage: {metadata.df['remaining_mem_usage'][0]}')
+        metadata: SimData = oracle.run(config, loglvl=log.logging.INFO)
+        print(f'distros: {metadata.df['success_count'][0]}/{metadata.df['send_count'][0]}, vlinks: {metadata.df['vlink_success_count'][0]}/{metadata.df['vlink_send_count'][0]}')
+        #print(f'remaining memory usage: {metadata.df['remaining_mem_usage'][0]}')
+        #print(metadata.df['success_count'][0])
+        #print(metadata.throughput)
 
-    #for key, value in metadata.distro_results.items():
-        #print(f'---- SUCCESSFUL DISTRIBUTION ----\nID: {key}\nSRC: {value.src_result}\nDST: {value.dst_result}')
-    #ga: GraphAnimation = oracle.entanglement_animation(f'demo.gif', fps=5)
+        #for key, value in metadata.distro_results.items():
+            #print(f'---- SUCCESSFUL DISTRIBUTION ----\nID: {key}\nSRC: {value.src_result}\nDST: {value.dst_result}')
+        #ga: GraphAnimation = oracle.entanglement_animation(f'demo.gif', fps=5)
 
 
 
