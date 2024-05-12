@@ -1,5 +1,6 @@
 from qns.entity.node.app import Application
 from qns.entity.qchannel.qchannel import QuantumChannel
+from qns.entity.cchannel.cchannel import ClassicChannel
 from qns.network.topology import Topology
 from qns.network.topology.linetopo import LineTopology
 from vlaware_qnode import VLAwareQNode
@@ -8,14 +9,24 @@ from vl_distro import VLEnabledDistributionApp
 from qns.models.delay import NormalDelayModel, DelayModel, ConstantDelayModel, UniformDelayModel
 
 from typing import Dict, List, Tuple
+import numpy as np
 
 
 light_speed = 299791458
-length = 0.5
+length = 20 # CONNECTION_ORIENTED PAPER: 0.5km; SLS PAPER: 20km
+
+channel_delay_model = ConstantDelayModel(delay=length/light_speed)
+memory_delay_model = UniformDelayModel(min_delay=0, max_delay=0.01) # TODO for this to work implement asynchronous read and write
 
 class CustomLineTopology(LineTopology):
     def __init__(self, nodes_number):
-        super().__init__(nodes_number, nodes_apps=[VLEnabledDistributionApp(), VLMaintenanceApp()], memory_args=[{'capacity': 1000}], cchannel_args={'delay': length/light_speed})
+        super().__init__(
+            nodes_number, 
+            nodes_apps=[VLEnabledDistributionApp(), VLMaintenanceApp()], 
+            memory_args=[{'capacity': 1000, 'delay': memory_delay_model}], 
+            qchannel_args={'delay': channel_delay_model, 'length': length},
+            cchannel_args={'delay': channel_delay_model, 'length': length},
+        )
 
     def build(self) -> Tuple[List[VLAwareQNode], List[QuantumChannel]]:
         nl: List[VLAwareQNode] = []
@@ -27,7 +38,7 @@ class CustomLineTopology(LineTopology):
         for i in range(self.nodes_number - 1):
             n = VLAwareQNode(f"n{i+2}")
             nl.append(n)
-            link = QuantumChannel(name=f"l{i+1}", delay=length/light_speed)
+            link = QuantumChannel(name=f"l{i+1}", **self.qchannel_args)
             ll.append(link)
 
             pn.add_qchannel(link)

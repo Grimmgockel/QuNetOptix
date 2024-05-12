@@ -30,27 +30,15 @@ class VLMaintenanceApp(VLApp):
         super().__init__()
 
         # members
-        self.entanglement_type: Type[QuantumModel] = VLEntangledPair # TODO custom entanglement model for no ambiguity
+        self.entanglement_type: Type[QuantumModel] = VLEntangledPair 
         self.app_name: str = 'maint'
 
     def _success(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         self.log_trans(simple_colors.magenta(f'established vlink ({self.own.name}, {src_node.name})'), transmit=transmit)
         self.success_count += 1
 
-        self.net.metadata.entanglement_log.append(EntanglementLogEntry(
-            timestamp=0,
-            ent_t=EntanglementLogEntry.ent_type.VLINK,
-            status=EntanglementLogEntry.status_type.END2END,
-            instruction=EntanglementLogEntry.instruction_type.CREATE,
-            nodeA=self.own,
-            nodeB=src_node,
-        ))
-        self.net.metadata.entanglement_log_timestamps[transmit.id] += 2 # TODO increment the amount of hops to the vlink to get the timestamps right 
-
         self.own.vlink_buf.put_nowait(transmit)
         src_node.vlink_buf.put_nowait(transmit)
-
-        cchannel: Optional[ClassicChannel] = self.own.get_cchannel(src_node) 
 
         # decide where to notify about new vlink
         src_waiting = not self.own.waiting_for_vlink_buf.empty()
@@ -67,9 +55,9 @@ class VLMaintenanceApp(VLApp):
             tgt = self.own if coinflip_result else transmit.dst
 
         if tgt is not None:
-            self.send_control(cchannel, tgt, transmit, "vlink", "distro") 
+            self.send_control(tgt, transmit, "vlink", "distro") 
 
     def _vlink(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        # TODO clear vlink on this side
-        print(transmit) # once trans_registry is global, this should be easy
-        #s1 = self.memory.read(vlink_transmit.second_epr_name)
+        raise NotImplementedError()
+
+

@@ -6,11 +6,11 @@ from vl_net_graph import GraphAnimation
 from config import Job
 from qns.network.topology import RandomTopology
 from vl_topo import CustomDoubleStarTopology, CustomLineTopology
+from qns.network.protocol import EntanglementDistributionApp
 from typing import List
 import matplotlib.pyplot as plt
 
 # TODO FOR NAVIGATION
-from qns.network.protocol import EntanglementDistributionApp
 from qns.models.epr import BaseEntanglement, BellStateEntanglement, MixedStateEntanglement, WernerStateEntanglement
 from qns.models.delay import DelayModel, NormalDelayModel, UniformDelayModel, ConstantDelayModel
 from qns.entity.cchannel import ClassicChannel
@@ -67,22 +67,22 @@ if __name__ == '__main__':
     oracle = NetworkOracle()
 
     for i in range(5, 16):
-        nodes_number = i
+        nodes_number = 10
         config = Config(
             ts=0,
             te=10,
             acc=10000000000000,
-            vlink_send_rate=10,
-            send_rate=10,
+            vlink_send_rate=5,
+            send_rate=5,
             topo=CustomLineTopology(nodes_number=nodes_number),
-            job = Job.custom(sessions=[('n1', f'n{nodes_number-1}')]),
-            continuous_distro=False,
+            job = Job.custom(sessions=[('n1', f'n{nodes_number}')]),
+            #continuous_distro=False,
             vlinks=[('n2', f'n{nodes_number-1}')],
-            schedule_n_vlinks=1,
+            #schedule_n_vlinks=1,
         )
 
         metadata: SimData = oracle.run(config, loglvl=log.logging.INFO)
-        print(f'distros: {metadata.df['success_count'][0]}/{metadata.df['send_count'][0]}, vlinks: {metadata.df['vlink_success_count'][0]}/{metadata.df['vlink_send_count'][0]}')
+        print(f'distros: {metadata.success_count}/{metadata.send_count}, vlinks: {metadata.df['vlink_success_count'][0]}/{metadata.df['vlink_send_count'][0]}')
         #print(f'remaining memory usage: {metadata.df['remaining_mem_usage'][0]}')
         #print(metadata.df['success_count'][0])
         #print(metadata.throughput)
@@ -90,6 +90,15 @@ if __name__ == '__main__':
         #for key, value in metadata.distro_results.items():
             #print(f'---- SUCCESSFUL DISTRIBUTION ----\nID: {key}\nSRC: {value.src_result}\nDST: {value.dst_result}')
         #ga: GraphAnimation = oracle.entanglement_animation(f'demo.gif', fps=5)
+
+
+
+
+# TODO IMPLEMENT THE ASYNC READ/WRITE 
+# TODO MAKE PLOTS OF POC EXPERIMENT
+# TODO SHOOT MSG TO BECKE
+# TODO WRITE CV AND START APPLYING
+# TODO WRITE BASICS CHAPTER AND WATCH OUT FOR PHYSICAL PARAMS WHILE READING
 
 
 

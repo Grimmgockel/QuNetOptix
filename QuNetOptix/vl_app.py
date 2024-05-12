@@ -138,7 +138,6 @@ class VLApp(ABC, Application):
             start_time_s=self._simulator.current_time.sec
         )
         self.own.trans_registry[epr.account.transmit_id] = transmit
-        self.net.metadata.entanglement_log_timestamps[transmit.id] = 0 # plotting
         self.log_trans(f'start new ep distribution: {transmit.src} -> {transmit.dst} [epr={epr.name}]', transmit=transmit)
 
         store_success = self.memory.write(epr)
@@ -186,11 +185,6 @@ class VLApp(ABC, Application):
         qchannel.send(epr, next_hop=next_hop)
 
     def store_received_qubit(self, src_node: VLAwareQNode, epr: QuantumModel):
-        # get sender channel 
-        cchannel: ClassicChannel = self.own.get_cchannel(src_node)
-        if cchannel is None:
-            raise Exception(f"{self}: No such classic channel")
-
         # bookkeeping
         updated_transmit: Transmit = Transmit(
             id=epr.account.transmit_id,
@@ -215,7 +209,7 @@ class VLApp(ABC, Application):
             self.memory.read(epr)
             if self.own is not epr.account.dst:
                 self.memory.read(forward_epr)
-            self.send_control(cchannel, src_node, updated_transmit, 'revoke', self.app_name)
+            self.send_control(src_node, updated_transmit, 'revoke', self.app_name)
             self.own.trans_registry[updated_transmit.id] = None # clear
             return
 
@@ -225,9 +219,14 @@ class VLApp(ABC, Application):
             self.log_trans(f"stored qubit {epr.name}", transmit=updated_transmit)
 
         # if storage successful
-        self.send_control(cchannel, src_node, updated_transmit, 'swap', self.app_name)
+        self.send_control(src_node, updated_transmit, 'swap', self.app_name)
 
-    def send_control(self, cchannel: ClassicChannel, dst: VLAwareQNode, transmit: Transmit, control: str, app_name: str):
+    def send_control(self, dst: VLAwareQNode, transmit: Transmit, control: str, app_name: str):
+        # get sender channel 
+        cchannel: ClassicChannel = self.own.get_cchannel(dst)
+        if cchannel is None:
+            raise Exception(f"{self}: No such classic channel")
+        # build packet
         classic_packet = ClassicPacket(
             msg={"cmd": control, "transmit_id": transmit.id, 'app_name': app_name}, 
             src=self.own, 
@@ -288,7 +287,7 @@ class VLApp(ABC, Application):
             self.log_trans(f'performed swap (({backward_node.name}, {self.own.name}) - ({self.own.name}, {forward_node.name})) -> ({backward_node.name}, {forward_node.name})', transmit=transmit)
 
         # send next
-        self.send_control(src_cchannel, src_node, transmit, 'next', self.app_name)
+        self.send_control(src_node, transmit, 'next', self.app_name)
 
     def _next(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         if self.own == transmit.dst: # successful distribution
@@ -300,7 +299,7 @@ class VLApp(ABC, Application):
                 result_epr: QuantumModel = self.memory.read(transmit.alice.name)
                 self.net.metadata.distro_results[transmit.id] = DistroResult(dst_result=(transmit, result_epr))
 
-            self.send_control(cchannel, transmit.src, transmit, 'success', self.app_name)
+            self.send_control(transmit.src, transmit, 'success', self.app_name)
             return
 
         self.distribute_qubit_adjacent(transmit.id)
@@ -317,8 +316,7 @@ class VLApp(ABC, Application):
                 self.log_trans(f'revoked qubit {epr}', transmit=transmit)
         self.own.trans_registry[transmit.id] = None
         if self.own != transmit.src: # recurse back to source node
-            cchannel = self.own.get_cchannel(transmit.src)
-            self.send_control(cchannel, transmit.src, transmit, 'revoke', self.app_name)
+            self.send_control(transmit.src, transmit, 'revoke', self.app_name)
 
 
     @abstractmethod
