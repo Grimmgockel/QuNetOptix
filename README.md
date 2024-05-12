@@ -41,13 +41,11 @@ With each additional node, virtual link-enabled routing will bypass one more nod
     <img src="https://i.imgur.com/V3CYkR1.gif" width="24%" style="border: 1px solid #333333"/>
 </div>
 
-In this setup, only the speed of light and link length will be considered. 
-Fiber-optic cables have infinite bandwidth, buffer size and no loss. 
-Quantum memories have no read or write delays, and there is no decoherence in both memories and links.
+The following parametres will be considered...
 
 <div style="display: flex; justify-content: space-around;">
-    <img src="https://i.imgur.com/RkVJX52.gif" width="49%" style="border: 1px solid #333333"/>
-    <img src="https://i.imgur.com/V3CYkR1.gif" width="49%" style="border: 1px solid #333333"/>
+    <img src="" width="49%" style="border: 1px solid #333333"/>
+    <img src="" width="49%" style="border: 1px solid #333333"/>
 </div>
 
 

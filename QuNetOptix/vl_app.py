@@ -330,7 +330,7 @@ class VLApp(ABC, Application):
 
     def generate_qubit(self, src: VLAwareQNode, dst: VLAwareQNode, session_id: str,
                        transmit_id: Optional[str] = None) -> QuantumModel:
-        epr = self.entanglement_type(name=uuid.uuid4().hex)
+        epr = self.entanglement_type(name=uuid.uuid4().hex) 
         epr.account = EprAccount(
             transmit_id=transmit_id if transmit_id is not None else uuid.uuid4().hex,
             session_id=session_id,

@@ -10,12 +10,15 @@ from typing import List
 import matplotlib.pyplot as plt
 
 # TODO FOR NAVIGATION
+from qns.network.protocol import EntanglementDistributionApp
 from qns.models.epr import BaseEntanglement, BellStateEntanglement, MixedStateEntanglement, WernerStateEntanglement
 from qns.models.delay import DelayModel, NormalDelayModel, UniformDelayModel, ConstantDelayModel
 from qns.entity.cchannel import ClassicChannel
 from qns.entity.qchannel import QuantumChannel, QubitLossChannel
 from qns.entity.memory import QuantumMemory
 # TODO i need all the hardware params now - LOOK AT GUUS DISSERTATION
+# WernerStateEntanglement - make it work
+
 # ClassicChannel
 # - bandwidth
 # - delay
