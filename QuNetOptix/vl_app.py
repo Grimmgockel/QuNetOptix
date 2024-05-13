@@ -18,8 +18,6 @@ from vl_routing import RoutingResult
 from vl_entanglement import StandardEntangledPair, VLEntangledPair
 from metadata import SimData, DistroResult
 from vl_network import VLNetwork
-from vl_net_graph import EntanglementLogEntry
-
 from typing import Optional, Dict, Callable, Type, Any, Tuple
 import queue
 import random

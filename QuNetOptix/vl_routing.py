@@ -3,7 +3,6 @@ from qns.entity.cchannel import ClassicChannel
 from qns.entity.qchannel import QuantumChannel
 
 from vlaware_qnode import VLAwareQNode
-from vl_net_graph import VLNetGraph
 
 from typing import Callable, Union, List, Tuple, Dict
 from dataclasses import dataclass
@@ -26,7 +25,7 @@ class RoutingTableEntry:
     path_physical: List[VLAwareQNode]
 
 class VLEnabledRouteAlgorithm(RouteImpl):
-    def __init__(self, physical_graph: VLNetGraph, vlink_graph: VLNetGraph, metric_func: Callable[[Union[QuantumChannel, ClassicChannel]], float] = None) -> None:
+    def __init__(self, physical_graph, vlink_graph, metric_func: Callable[[Union[QuantumChannel, ClassicChannel]], float] = None) -> None:
         super().__init__('vl_dijkstra')
 
         # members

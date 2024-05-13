@@ -2,7 +2,7 @@ import qns.utils.log as log
 from oracle import NetworkOracle
 from metadata import SimData
 from config import Config
-from vl_net_graph import GraphAnimation
+from QuNetOptix.vl_animation import GraphAnimation
 from config import Job
 from qns.network.topology import RandomTopology
 from vl_topo import CustomDoubleStarTopology, CustomLineTopology

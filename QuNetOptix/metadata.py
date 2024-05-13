@@ -3,7 +3,6 @@ from typing import List, Set, Dict, Tuple, Optional
 from vlaware_qnode import Transmit
 import pandas as pd
 from qns.network.requests import Request
-from vl_net_graph import EntanglementLogEntry
 from qns.models.core import QuantumModel
 
 
@@ -18,7 +17,7 @@ class SimData:
     This is per simulation run.
     '''
     # plotting
-    entanglement_log: List[EntanglementLogEntry] = None
+    entanglement_log = None
     entanglement_log_timestamps: Dict[str, int] = None
 
     # Routing

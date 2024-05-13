@@ -9,7 +9,7 @@ from vl_network import VLNetwork
 from vlaware_qnode import VLAwareQNode
 from config import Config
 from metadata import SimData
-from vl_net_graph import GraphAnimation
+from vl_animation import GraphAnimation
 
 import os
 from typing import Any 
