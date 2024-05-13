@@ -4,8 +4,9 @@ from qns.entity.cchannel.cchannel import ClassicChannel
 from qns.network.topology import Topology
 from qns.network.topology.linetopo import LineTopology
 from vlaware_qnode import VLAwareQNode
-from vl_maintenance import VLMaintenanceApp
-from vl_distro import VLEnabledDistributionApp
+from vl_app import VLEnabledDistributionApp, VLMaintenanceApp
+#from vl_maintenance import VLMaintenanceApp
+#from vl_distro import VLEnabledDistributionApp
 from qns.models.delay import NormalDelayModel, DelayModel, ConstantDelayModel, UniformDelayModel
 
 from typing import Dict, List, Tuple
@@ -54,8 +55,7 @@ class CustomDoubleStarTopology(Topology):
     Custom double star topology for testing virtual link routing: minimum topology for virtual link exploitation
     '''
     def __init__(self, memory_args=[{'capacity': 50}]):
-        super().__init__(12, memory_args=memory_args, nodes_apps=[VLEnabledDistributionApp(),VLMaintenanceApp()])
-        #super().__init__(12, memory_args=[{"capacity": 50}], nodes_apps=[DummyApp(),VLMaintenanceApp()])
+        super().__init__(12, memory_args=memory_args, nodes_apps=[VLEnabledDistributionApp(), VLMaintenanceApp()])
 
     def build(self) -> Tuple[List[VLAwareQNode], List[QuantumChannel]]:
         nl: List[VLAwareQNode] = []

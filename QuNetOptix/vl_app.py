@@ -15,34 +15,49 @@ import qns.utils.log as log
 
 from vlaware_qnode import VLAwareQNode, Transmit, EprAccount
 from vl_routing import RoutingResult
-from vl_entanglement import StandardEntangledPair
+from vl_entanglement import StandardEntangledPair, VLEntangledPair
 from metadata import SimData, DistroResult
 from vl_network import VLNetwork
 from vl_net_graph import EntanglementLogEntry
 
 from typing import Optional, Dict, Callable, Type, Any, Tuple
-from abc import ABC, abstractmethod
 import queue
+import random
+import simple_colors
 import uuid
-from simple_colors import *
 
-'''
-Abstract class for node protocol in virtual link network
-'''
-class VLApp(ABC, Application):
-    def __init__(self):
+class RecvQubitOverVL(Event):
+    '''
+    Received by charlie after swapping over virtual link
+    '''
+    def __init__(self, t: Optional[Time] = None, qubit: QuantumModel = None, src: VLAwareQNode = None, dest: VLAwareQNode = None, vlink_transmit_id: str = None, by: Optional[Any] = None):
+        super().__init__(t=t, name=None, by=by)
+        self.qubit = qubit
+        self.vlink_transmit_id = vlink_transmit_id
+        self.src = src
+        self.dest = dest
+
+    def invoke(self) -> None:
+        self.dest.handle(self)
+
+
+class VLApp(Application):
+    def __init__(self, name: str):
         super().__init__()
 
         # members
+        self.app_name: str = name
+        self.entanglement_type: Type[QuantumModel] = None
+        if name != 'distro' and name != 'maint':
+            raise ValueError('Invalid name')
+
         self.control: Dict[str, Callable[..., Any]] = {
-            "swap": self._swap,
-            "next": self._next,
-            "success": self._success,
-            "revoke": self._revoke,
+            "swap": self.swap,
+            "next": self.next,
+            "success": self.success,
+            "revoke": self.revoke,
             "vlink": self._vlink,
         }
-        self.entanglement_type: Type[QuantumModel] = None
-        self.app_name: str = None
         self.own: VLAwareQNode = None 
         self.memory: QuantumMemory = None 
         self.net: VLNetwork = None 
@@ -54,6 +69,7 @@ class VLApp(ABC, Application):
         self.dst: Optional[VLAwareQNode] = None
 
         # communication
+        self.add_handler(self.RecvQubitOverVLHandler, [RecvQubitOverVL])
         self.add_handler(self.RecvQubitHandler, [RecvQubitPacket])
         self.add_handler(self.RecvClassicPacketHandler, [RecvClassicPacket])
 
@@ -62,6 +78,11 @@ class VLApp(ABC, Application):
         self.success_count: int = 0
         self.send_count: int = 0
         self.generation_latency_agg: float = 0.0
+
+    def RecvQubitOverVLHandler(self, node: VLAwareQNode, event: RecvQubitOverVL):
+        if not isinstance(event.qubit, self.entanglement_type): 
+            return
+        self.store_received_qubit(event.src, event.qubit)
 
     def RecvQubitHandler(self, node: VLAwareQNode, event: RecvQubitPacket):
         if not isinstance(event.qubit, self.entanglement_type): 
@@ -252,7 +273,7 @@ class VLApp(ABC, Application):
         # handle classical message
         self.control.get(cmd)(src_node, src_cchannel, transmit)
 
-    def _swap(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
+    def swap(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         if self.own != transmit.src: # dont swap for first node
 
             # swap and manage new epr
@@ -271,11 +292,11 @@ class VLApp(ABC, Application):
 
             # set new EP in Alice (request src)
             backward_node: VLAwareQNode = new_epr.account.locA
-            backward_node_app: self.entanglement_type = backward_node.get_apps(type(self))[0]
+            backward_node_app = backward_node.get_apps(type(self))[0]
 
             # set new EP in Charlie (next in path)
             forward_node: VLAwareQNode = new_epr.account.locB
-            forward_node_app: self.entanglement_type = forward_node.get_apps(type(self))[0]
+            forward_node_app = forward_node.get_apps(type(self))[0]
 
             # set alicea and charlie after swap
             backward_node_app.set_charlie(new_epr, first, second)
@@ -289,10 +310,9 @@ class VLApp(ABC, Application):
         # send next
         self.send_control(src_node, transmit, 'next', self.app_name)
 
-    def _next(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
+    def next(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         if self.own == transmit.dst: # successful distribution
             self.own.trans_registry[transmit.id] = transmit
-            cchannel: Optional[ClassicChannel] = self.own.get_cchannel(transmit.src) 
 
             # meta data
             if self.app_name == 'distro':
@@ -304,28 +324,124 @@ class VLApp(ABC, Application):
 
         self.distribute_qubit_adjacent(transmit.id)
 
-    def _revoke(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
+    def revoke(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         # revoke transmission fully
-        if transmit.alice is not None:
-            epr = self.memory.read(transmit.alice.name)
-            if epr is not None:
-                self.log_trans(f'revoked qubit {epr}', transmit=transmit)
-        if transmit.charlie is not None:
-            epr = self.memory.read(transmit.charlie.name)
-            if epr is not None:
-                self.log_trans(f'revoked qubit {epr}', transmit=transmit)
+        for node in [transmit.alice, transmit.charlie]:
+            if node is not None:
+                epr = self.memory.read(node.name)
+                if epr is not None:
+                    self.log_trans(f'revoked qubit {epr}', transmit=transmit)
+
         self.own.trans_registry[transmit.id] = None
-        if self.own != transmit.src: # recurse back to source node
+        if self.own != transmit.src:
             self.send_control(transmit.src, transmit, 'revoke', self.app_name)
 
+    def success(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
+        if self.app_name == 'distro':
+            result_epr: QuantumModel = self.memory.read(transmit.charlie.name)
+            self.log_trans(simple_colors.green(f"successful distribution of [result_epr={result_epr}]"), transmit=transmit)
 
-    @abstractmethod
-    def _success(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        pass
+            # KPIs
+            self.net.metadata.distro_results[transmit.id].src_result = (transmit, result_epr)
+            self.success_count += 1
+            gen_latency: float = self._simulator.current_time.sec - transmit.start_time_s
+            self.generation_latency_agg += gen_latency
 
-    @abstractmethod
+            # clear transmission
+            self.own.trans_registry[transmit.id] = None
+            return
+
+        self.log_trans(simple_colors.magenta(f'established vlink ({self.own.name}, {src_node.name})'), transmit=transmit)
+        self.success_count += 1
+
+        self.own.vlink_buf.put_nowait(transmit)
+        src_node.vlink_buf.put_nowait(transmit)
+
+        # decide where to notify about new vlink
+        src_waiting = not self.own.waiting_for_vlink_buf.empty()
+        dst_waiting = not transmit.dst.waiting_for_vlink_buf.empty()
+        tgt: Optional[VLAwareQNode] = None
+
+        if src_waiting and not dst_waiting:
+            tgt = self.own
+        elif not src_waiting and dst_waiting:
+            tgt = transmit.dst
+        elif src_waiting and dst_waiting:
+            # flip a coin
+            coinflip_result =  random.choice([True, False])
+            tgt = self.own if coinflip_result else transmit.dst
+
+        if tgt is not None:
+            self.send_control(tgt, transmit, "vlink", "distro") 
+
     def _vlink(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        pass
+        if self.own.waiting_for_vlink_buf.empty() or self.own.vlink_buf.empty(): # someone else was faster
+            return
+            #raise Exception("Race condition probably :)")
+
+        transmit_to_teleport: Transmit = self.own.waiting_for_vlink_buf.get_nowait()
+        vlink_transmit: Transmit = self.own.vlink_buf.get_nowait()
+
+
+        dir = 'backward' if self.own == vlink_transmit.dst else 'forward'
+        if dir == 'forward':
+            other_side: Transmit = vlink_transmit.dst.vlink_buf.get_nowait() # remove from other side
+            if transmit_to_teleport.alice is None and vlink_transmit.src == transmit_to_teleport.src: # start node is vlink node forward if alice is none
+                first = self.memory.read(transmit_to_teleport.charlie.name) 
+            else:
+                first = self.memory.read(transmit_to_teleport.alice.name) 
+        if dir == 'backward':
+            other_side: Transmit = vlink_transmit.src.vlink_buf.get_nowait() # remove from other side
+            if transmit_to_teleport.alice is None and vlink_transmit.dst == transmit_to_teleport.src: # start node is vlink node forward if alice is none
+                first = self.memory.read(transmit_to_teleport.charlie.name)
+            else:
+                first = self.memory.read(transmit_to_teleport.alice.name)
+
+        if other_side.id != vlink_transmit.id:
+            raise ValueError("Removed wrong transmit from other side while using vlink")
+
+        second = self.memory.read(vlink_transmit.charlie.name) 
+
+        # swap with vlink
+        new_epr: self.entanglement_type = self.entanglement_type(first.swapping(second))
+        new_epr.name = uuid.uuid4().hex
+        new_epr.account = EprAccount(
+            transmit_id=transmit_to_teleport.id,
+            name=new_epr.name,
+            src=transmit_to_teleport.src,
+            dst=transmit_to_teleport.dst,
+            locA=first.account.locA,
+            locB=second.account.locB,
+        )
+
+        # set new EP in Alice (request src)
+        backward_node: VLAwareQNode = transmit_to_teleport.src
+        backward_node_app: VLEnabledDistributionApp = backward_node.get_apps(VLEnabledDistributionApp)[0]
+
+
+        # set new EP in Charlie (next in path)
+        forward_node = vlink_transmit.dst if dir == 'forward' else vlink_transmit.src
+        forward_node_app: VLEnabledDistributionApp = forward_node.get_apps(VLEnabledDistributionApp)[0]
+
+        # update forward and backward nodes
+        forward_node_app.set_alice(new_epr, first, second, used_vlink=vlink_transmit)
+        backward_node_app.set_charlie(new_epr, first, second, used_vlink=vlink_transmit)
+        self.log_trans(f'performed swap using vlink (({backward_node.name}, {self.own.name}) - ({self.own.name}, {forward_node.name})) -> ({backward_node.name}, {forward_node.name})', transmit=transmit_to_teleport)
+
+        # clean up after vlink usage
+        if backward_node != self.own:
+            self.memory.read(transmit_to_teleport.charlie.name) # forward ep no longer of use because of vlink
+        node_to_clear = vlink_transmit.src if self.own == vlink_transmit.dst else vlink_transmit.dst 
+        node_to_clear_app: VLEnabledDistributionApp = node_to_clear.get_apps(VLEnabledDistributionApp)[0] # clear other node of vlink
+        node_to_clear_app.memory.read(second.name)
+        vlink_transmit.dst.trans_registry[vlink_transmit.id]= None
+        vlink_transmit.src.trans_registry[vlink_transmit.id]= None
+        self.waiting_for_vlink = False
+
+        # treat this same way as physical qubit transmission by sending recvqubitevent
+        send_event = RecvQubitOverVL(self._simulator.current_time, qubit=new_epr, src=backward_node, dest=forward_node, vlink_transmit_id=vlink_transmit.id, by=self) # no delay on vlinks, just use current time
+        self._simulator.add_event(send_event)
+
 
     def generate_qubit(self, src: VLAwareQNode, dst: VLAwareQNode, session_id: str,
                        transmit_id: Optional[str] = None) -> QuantumModel:
@@ -377,3 +493,13 @@ class VLApp(ABC, Application):
         else:
             log.debug(f'\t[{self.own.name}]\t{self.memory._usage}/{self.memory.capacity}\t{self.app_name}\t{transmit}:\t{str}')
 
+
+class VLEnabledDistributionApp(VLApp):
+    def __init__(self):
+        super().__init__('distro')
+        self.entanglement_type: Type[QuantumModel] = StandardEntangledPair 
+
+class VLMaintenanceApp(VLApp):
+    def __init__(self):
+        super().__init__('maint')
+        self.entanglement_type: Type[QuantumModel] = VLEntangledPair 
