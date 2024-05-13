@@ -5,6 +5,7 @@ from qns.entity.memory import QuantumMemory
 from qns.network.requests import Request
 from qns.entity.node.app import Application
 from qns.models.core import QuantumModel
+from qns.entity.memory.event import MemoryReadRequestEvent, MemoryReadResponseEvent, MemoryWriteRequestEvent, MemoryWriteResponseEvent
 from qns.entity.qchannel.qchannel import RecvQubitPacket
 from qns.entity.cchannel.cchannel import ClassicChannel, RecvClassicPacket, ClassicPacket
 from qns.entity.node import QNode
@@ -67,6 +68,8 @@ class VLApp(Application):
         self.dst: Optional[VLAwareQNode] = None
 
         # communication
+        self.add_handler(self.MemoryWriteResponseHandler, [MemoryWriteResponseEvent])
+        self.add_handler(self.MemoryReadResponseHandler, [MemoryReadResponseEvent])
         self.add_handler(self.RecvQubitOverVLHandler, [RecvQubitOverVL])
         self.add_handler(self.RecvQubitHandler, [RecvQubitPacket])
         self.add_handler(self.RecvClassicPacketHandler, [RecvClassicPacket])
@@ -203,6 +206,49 @@ class VLApp(Application):
             raise Exception(f"{self}: No such quantum channel.")
         qchannel.send(epr, next_hop=next_hop)
 
+    def MemoryWriteResponseHandler(self, node, event: MemoryWriteResponseEvent):
+        app, epr, transmit, src_node = event.request.by
+        if app is not self:
+            return
+
+        if self.own.storage_log[epr.name] is None: # previous storage failed and revoke already started
+            return
+
+        storage_log_entry = self.own.storage_log[epr.name]
+
+        if event.result == False:
+            self.log_trans(f'failed storage of qubit {epr.name}', transmit=transmit)
+            for ep_name in storage_log_entry.keys():
+                self.own.storage_log[epr.name] = None
+                self.log_trans(f'read request for {ep_name}', transmit=transmit)
+                read_request = MemoryReadRequestEvent(memory=self.memory, key=ep_name, t=self._simulator.current_time, by=(app, epr, transmit, src_node, 'revoke'))
+                self._simulator.add_event(read_request)
+            return
+
+        storage_log_entry[epr.name] = event.result
+        self.log_trans(f"stored qubit {epr.name}", transmit=transmit)
+
+        success: bool = all(status for status in storage_log_entry.values())
+        if success:
+            self.own.storage_log[epr.name] = None
+            self.send_control(src_node, transmit, 'swap', self.app_name)
+
+    def MemoryReadResponseHandler(self, node, event: MemoryReadResponseEvent):
+        app, epr, transmit, src_node, command = event.request.by
+        if app is not self:
+            return
+
+        if command == 'revoke':
+            if event.result is not None:
+                self.log_trans(f'revoked qubit {event.result}', transmit=transmit)
+
+            if not transmit.revoked:
+                transmit.revoked = True
+                self.own.trans_registry[transmit.id] = None # clear
+                if self.own != transmit.src:
+                    self.send_control(transmit.src, transmit, 'revoke', self.app_name)
+            return
+
     def store_received_qubit(self, src_node: VLAwareQNode, epr: QuantumModel):
         # bookkeeping
         updated_transmit: Transmit = Transmit(
@@ -216,29 +262,22 @@ class VLApp(Application):
         self.own.trans_registry[epr.account.transmit_id] = updated_transmit
         self.log_trans(f"received qubit from {src_node.name}\t[{epr}]", transmit=updated_transmit)
 
-        if self.own is not epr.account.dst: # dont generate forward epr when dst reached
+        # async storage 
+        self.log_trans(f'storage request for {epr.name}', transmit=updated_transmit)
+        write_request_1 = MemoryWriteRequestEvent(memory=self.memory, qubit=epr,t=self._simulator.current_time,  by=(self, epr, updated_transmit, src_node))
+        storage_log = {epr.name: None}
+        if self.own is not epr.account.dst: # no forward epr if dst is reached
             forward_epr = self.generate_qubit(src=epr.account.src, dst=epr.account.dst, session_id=epr.account.session_id, transmit_id=epr.account.transmit_id) 
             updated_transmit.charlie = forward_epr.account 
+            self.log_trans(f'storage request for {forward_epr.name}', transmit=updated_transmit)
+            write_request_2 = MemoryWriteRequestEvent(memory=self.memory, qubit=forward_epr, t=self._simulator.current_time, by=(self, forward_epr, updated_transmit, src_node))
+            storage_log[forward_epr.name] = None
 
-        # storage 
-        storage_success_1 = self.memory.write(epr)
-        storage_success_2 = self.memory.write(forward_epr) if self.own is not epr.account.dst else True
-        if not storage_success_1 or not storage_success_2:
-            # revoke distribution
-            self.memory.read(epr)
-            if self.own is not epr.account.dst:
-                self.memory.read(forward_epr)
-            self.send_control(src_node, updated_transmit, 'revoke', self.app_name)
-            self.own.trans_registry[updated_transmit.id] = None # clear
-            return
-
-        try:
-            self.log_trans(f"stored qubit {epr.name} and {forward_epr.name}", transmit=updated_transmit)
-        except UnboundLocalError:
-            self.log_trans(f"stored qubit {epr.name}", transmit=updated_transmit)
-
-        # if storage successful
-        self.send_control(src_node, updated_transmit, 'swap', self.app_name)
+        self.own.storage_log[epr.name] = storage_log
+        self._simulator.add_event(write_request_1)
+        if self.own is not epr.account.dst: # no forward epr if dst is reached
+            self.own.storage_log[forward_epr.name] = storage_log
+            self._simulator.add_event(write_request_2)
 
     def send_control(self, dst: VLAwareQNode, transmit: Transmit, control: str, app_name: str):
         # get sender channel 
@@ -324,15 +363,14 @@ class VLApp(Application):
 
     def revoke(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         # revoke transmission fully
-        for node in [transmit.alice, transmit.charlie]:
-            if node is not None:
-                epr = self.memory.read(node.name)
-                if epr is not None:
-                    self.log_trans(f'revoked qubit {epr}', transmit=transmit)
 
-        self.own.trans_registry[transmit.id] = None
-        if self.own != transmit.src:
-            self.send_control(transmit.src, transmit, 'revoke', self.app_name)
+        for ep in [transmit.alice, transmit.charlie]:
+            if ep is not None:
+                self.own.storage_log[ep.name] = None
+                self.log_trans(f'read request for {ep.name}', transmit=transmit)
+                read_request = MemoryReadRequestEvent(memory=self.memory, key=ep.name, t=self._simulator.current_time, by=(self, ep, transmit, src_node, 'revoke'))
+                self._simulator.add_event(read_request)
+
 
     def success(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         if self.app_name == 'distro':

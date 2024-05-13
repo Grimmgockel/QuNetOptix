@@ -25,6 +25,9 @@ class RoutingTableEntry:
     path_physical: List[VLAwareQNode]
 
 class VLEnabledRouteAlgorithm(RouteImpl):
+    '''
+    Dijkstra over virtual links
+    '''
     def __init__(self, physical_graph, vlink_graph, metric_func: Callable[[Union[QuantumChannel, ClassicChannel]], float] = None) -> None:
         super().__init__('vl_dijkstra')
 

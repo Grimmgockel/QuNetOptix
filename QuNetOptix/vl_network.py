@@ -43,10 +43,10 @@ class VLNetGraph():
         shortest_path_length = nx.shortest_path_length(self.graph, source=source, target=target)
         return shortest_path_length
     
-'''
-Quantum network containing special request types called superlinks, that are considered for routing as entanglement links
-'''
 class VLNetwork(QuantumNetwork):
+    '''
+    Quantum network containing special request types called superlinks, that are considered for routing as entanglement links
+    '''
     def __init__(self, topo: Topology, metadata: SimData, continuous_distro: bool, schedule_n_vlinks: Optional[int], custom_vlinks: List[Tuple[str]], vlink_send_rate: float):
         # init metadata
         self.metadata: SimData = metadata

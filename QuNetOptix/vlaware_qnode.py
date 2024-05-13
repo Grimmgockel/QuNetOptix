@@ -2,7 +2,7 @@ from qns.entity.node.app import Application
 from qns.entity.node import QNode
 from qns.network.requests import Request
 
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 
 from typing import Optional
 from dataclasses import dataclass
@@ -19,9 +19,9 @@ class VLAwareQNode(QNode):
         self.session_registry: Dict[str, Dict[str, VLAwareQNode]] = {} # one node can manage multiple src-dst sessions, save with transmit_id
         self.has_vlink = False
         self.vlinks: List[Request] = []
-
         self.vlink_buf = queue.Queue() # shared resource
         self.waiting_for_vlink_buf = queue.Queue() # shared resource
+        self.storage_log: Dict[str, Dict[str, Optional[bool]]] = {} # key: transmit id, value: epr list to store, storage progress (e.g. 1/2)
 
     def add_vlink(self, vlink: Request):
         self.vlinks.append(vlink)
@@ -46,6 +46,7 @@ class Transmit:
     alice: Optional[EprAccount] = None # points backward 
     charlie: Optional[EprAccount] = None # points forwards
     start_time_s: Optional[float] = None
+    revoked: bool = False
 
     def __eq__(self, other):
         return self.id == other.id

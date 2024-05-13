@@ -17,14 +17,14 @@ light_speed = 299791458
 length = 20 # CONNECTION_ORIENTED PAPER: 0.5km; SLS PAPER: 20km
 
 channel_delay_model = ConstantDelayModel(delay=length/light_speed)
-memory_delay_model = UniformDelayModel(min_delay=0, max_delay=0.01) # TODO for this to work implement asynchronous read and write
+memory_delay_model = ConstantDelayModel(delay=0.01) # TODO for this to work implement asynchronous read and write
 
 class CustomLineTopology(LineTopology):
     def __init__(self, nodes_number):
         super().__init__(
             nodes_number, 
             nodes_apps=[VLEnabledDistributionApp(), VLMaintenanceApp()], 
-            memory_args=[{'capacity': 1000, 'delay': memory_delay_model}], 
+            memory_args=[{'capacity': 2, 'delay': memory_delay_model}], 
             qchannel_args={'delay': channel_delay_model, 'length': length},
             cchannel_args={'delay': channel_delay_model, 'length': length},
         )
