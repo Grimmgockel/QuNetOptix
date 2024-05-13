@@ -24,7 +24,7 @@ class CustomLineTopology(LineTopology):
         super().__init__(
             nodes_number, 
             nodes_apps=[VLEnabledDistributionApp(), VLMaintenanceApp()], 
-            memory_args=[{'capacity': 2, 'delay': memory_delay_model}], 
+            memory_args=[{'capacity': 200, 'delay': memory_delay_model}], 
             qchannel_args={'delay': channel_delay_model, 'length': length},
             cchannel_args={'delay': channel_delay_model, 'length': length},
         )

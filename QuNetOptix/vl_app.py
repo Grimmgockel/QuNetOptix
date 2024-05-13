@@ -162,16 +162,9 @@ class VLApp(Application):
         self.own.trans_registry[epr.account.transmit_id] = transmit
         self.log_trans(f'start new ep distribution: {transmit.src} -> {transmit.dst} [epr={epr.name}]', transmit=transmit)
 
-        store_success = self.memory.write(epr)
-        if not store_success:
-            self.memory.read(epr)
-            self.own.trans_registry[epr.account.transmit_id] = None
-            self.log_trans(f'failed starting new distribution {transmit.src} -> {transmit.dst} \t[{epr}]', transmit=transmit)
-            return
-        self.log_trans(f"stored qubit {epr}", transmit=transmit)
-
-        self.send_count += 1
-        self.distribute_qubit_adjacent(epr.account.transmit_id)
+        self.own.storage_log[epr.name] = {epr.name: None}
+        write_request = MemoryWriteRequestEvent(memory=self.memory, qubit=epr,t=self._simulator.current_time,  by=(self, epr, transmit, None, 'start'))
+        self._simulator.add_event(write_request)
 
     def distribute_qubit_adjacent(self, transmit_id: str):
         transmit = self.own.trans_registry.get(transmit_id)
@@ -207,7 +200,7 @@ class VLApp(Application):
         qchannel.send(epr, next_hop=next_hop)
 
     def MemoryWriteResponseHandler(self, node, event: MemoryWriteResponseEvent):
-        app, epr, transmit, src_node = event.request.by
+        app, epr, transmit, src_node, command = event.request.by
         if app is not self:
             return
 
@@ -227,6 +220,11 @@ class VLApp(Application):
 
         storage_log_entry[epr.name] = event.result
         self.log_trans(f"stored qubit {epr.name}", transmit=transmit)
+
+        if command == 'start': # start of distro
+            self.send_count += 1
+            self.distribute_qubit_adjacent(epr.account.transmit_id)
+            return
 
         success: bool = all(status for status in storage_log_entry.values())
         if success:
@@ -264,15 +262,17 @@ class VLApp(Application):
 
         # async storage 
         self.log_trans(f'storage request for {epr.name}', transmit=updated_transmit)
-        write_request_1 = MemoryWriteRequestEvent(memory=self.memory, qubit=epr,t=self._simulator.current_time,  by=(self, epr, updated_transmit, src_node))
+        command = 'single'
         storage_log = {epr.name: None}
         if self.own is not epr.account.dst: # no forward epr if dst is reached
+            command = 'dual'
             forward_epr = self.generate_qubit(src=epr.account.src, dst=epr.account.dst, session_id=epr.account.session_id, transmit_id=epr.account.transmit_id) 
             updated_transmit.charlie = forward_epr.account 
             self.log_trans(f'storage request for {forward_epr.name}', transmit=updated_transmit)
-            write_request_2 = MemoryWriteRequestEvent(memory=self.memory, qubit=forward_epr, t=self._simulator.current_time, by=(self, forward_epr, updated_transmit, src_node))
+            write_request_2 = MemoryWriteRequestEvent(memory=self.memory, qubit=forward_epr, t=self._simulator.current_time, by=(self, forward_epr, updated_transmit, src_node, command))
             storage_log[forward_epr.name] = None
 
+        write_request_1 = MemoryWriteRequestEvent(memory=self.memory, qubit=epr,t=self._simulator.current_time,  by=(self, epr, updated_transmit, src_node, command))
         self.own.storage_log[epr.name] = storage_log
         self._simulator.add_event(write_request_1)
         if self.own is not epr.account.dst: # no forward epr if dst is reached
@@ -506,7 +506,7 @@ class VLApp(Application):
         self.memory.read(epr.account.name) # read out new epr name before writing
 
         # safe new epr
-        self.memory.write(epr)
+        self.memory.write(epr) # synchronous storage for realism 
 
     def set_alice(self, epr: QuantumModel, first_old: QuantumModel, second_old: QuantumModel, used_vlink: Transmit = None):
         transmit = self.own.trans_registry.get(epr.account.transmit_id)
@@ -521,7 +521,7 @@ class VLApp(Application):
         self.memory.read(epr.account.name) # read out new epr name before writing
 
         # safe new epr
-        self.memory.write(epr)
+        self.memory.write(epr) # synchronous storage for realism 
 
     def log_trans(self, str: str, transmit: Transmit = None):
         if transmit is None:
