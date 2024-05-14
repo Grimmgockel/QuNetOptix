@@ -295,7 +295,7 @@ class VLApp(Application):
 
     def receive_control(self, node: VLAwareQNode, e: RecvClassicPacket):
         # get sender and channel
-        src_cchannel: ClassicChannel = e.by
+        src_cchannel: ClassicChannel = e.cchannel
         src_node: VLAwareQNode = src_cchannel.node_list[0] if src_cchannel.node_list[1] == self.own else src_cchannel.node_list[1]
         if src_cchannel is None:
             raise Exception(f"{self}: No such classic channel")

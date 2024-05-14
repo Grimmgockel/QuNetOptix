@@ -2,9 +2,10 @@ from qns.entity.node.app import Application
 from qns.entity.qchannel.qchannel import QuantumChannel
 from qns.entity.cchannel.cchannel import ClassicChannel
 from qns.network.topology import Topology
+from qns.network.protocol.node_process_delay import NodeProcessDelayApp
 from qns.network.topology.linetopo import LineTopology
 from vlaware_qnode import VLAwareQNode
-from vl_app import VLEnabledDistributionApp, VLMaintenanceApp
+from vl_app import VLEnabledDistributionApp, VLMaintenanceApp, RecvQubitOverVL, RecvClassicPacket, RecvQubitPacket
 #from vl_maintenance import VLMaintenanceApp
 #from vl_distro import VLEnabledDistributionApp
 from qns.models.delay import NormalDelayModel, DelayModel, ConstantDelayModel, UniformDelayModel
@@ -14,16 +15,18 @@ import numpy as np
 
 
 light_speed = 299791458
-length = 20 # CONNECTION_ORIENTED PAPER: 0.5km; SLS PAPER: 20km
+length = 20000 # CONNECTION_ORIENTED PAPER: 0.5km; SLS PAPER: 20km
 
-channel_delay_model = ConstantDelayModel(delay=length/light_speed)
-memory_delay_model = ConstantDelayModel(delay=0.01) # TODO for this to work implement asynchronous read and write
+channel_delay_model = NormalDelayModel(mean_delay=length/light_speed, std=(length/light_speed)/10)
+memory_delay_model = NormalDelayModel(mean_delay=0.01, std=0.001) 
+apps_list = [NodeProcessDelayApp(delay=0.5, delay_event_list=(RecvQubitPacket)), NodeProcessDelayApp(delay=0.1, delay_event_list=(RecvClassicPacket)), VLEnabledDistributionApp(), VLMaintenanceApp()]
+
 
 class CustomLineTopology(LineTopology):
     def __init__(self, nodes_number):
         super().__init__(
             nodes_number, 
-            nodes_apps=[VLEnabledDistributionApp(), VLMaintenanceApp()], 
+            nodes_apps=apps_list, 
             memory_args=[{'capacity': 200, 'delay': memory_delay_model}], 
             qchannel_args={'delay': channel_delay_model, 'length': length},
             cchannel_args={'delay': channel_delay_model, 'length': length},
@@ -55,7 +58,7 @@ class CustomDoubleStarTopology(Topology):
     Custom double star topology for testing virtual link routing: minimum topology for virtual link exploitation
     '''
     def __init__(self, memory_args=[{'capacity': 50}]):
-        super().__init__(12, memory_args=memory_args, nodes_apps=[VLEnabledDistributionApp(), VLMaintenanceApp()])
+        super().__init__(12, memory_args=memory_args, nodes_apps=apps_list)
 
     def build(self) -> Tuple[List[VLAwareQNode], List[QuantumChannel]]:
         nl: List[VLAwareQNode] = []
