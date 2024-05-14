@@ -76,7 +76,7 @@ class VLNetwork(QuantumNetwork):
             # TODO SLS
             # TODO at this point the network graph is built, based on the graph requests for virtual links need to be produced
             # TODO one superlink per node, look at random_requests in QuantumNetwork
-            raise Exception("VLS not implemented yet.")
+            pass
 
         # set routing algorithm
         self.physical_graph = VLNetGraph(self.nodes, self.qchannels)

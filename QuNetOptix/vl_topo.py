@@ -9,17 +9,34 @@ from vl_app import VLEnabledDistributionApp, VLMaintenanceApp, RecvQubitOverVL, 
 #from vl_maintenance import VLMaintenanceApp
 #from vl_distro import VLEnabledDistributionApp
 from qns.models.delay import NormalDelayModel, DelayModel, ConstantDelayModel, UniformDelayModel
+from qns.entity.memory import QuantumMemory
 
 from typing import Dict, List, Tuple
 import numpy as np
 
 
-light_speed = 299791458
-length = 20000 # CONNECTION_ORIENTED PAPER: 0.5km; SLS PAPER: 20km
+# --------- PARAMETRES --------- 
+light_speed = 299791458 
+length = 20000 # km
+memory_capacity = 500
+decoherence_rate = 0.2
+memory_delay = 0.1 # seconds
+c_node_process_delay = 0
+q_node_process_delay = 0
+init_fidelity = 0.99
+# --------- PARAMETRES --------- 
 
 channel_delay_model = NormalDelayModel(mean_delay=length/light_speed, std=(length/light_speed)/10)
-memory_delay_model = NormalDelayModel(mean_delay=0.01, std=0.001) 
-apps_list = [NodeProcessDelayApp(delay=0.5, delay_event_list=(RecvQubitPacket)), NodeProcessDelayApp(delay=0.1, delay_event_list=(RecvClassicPacket)), VLEnabledDistributionApp(), VLMaintenanceApp()]
+memory_delay_model = NormalDelayModel(mean_delay=memory_delay, std=memory_delay/10) 
+apps_list = [
+    NodeProcessDelayApp(delay=q_node_process_delay, delay_event_list=(RecvQubitPacket)), 
+    NodeProcessDelayApp(delay=c_node_process_delay, delay_event_list=(RecvClassicPacket)), 
+    VLEnabledDistributionApp(init_fidelity=init_fidelity), 
+    VLMaintenanceApp(),
+]
+memory_args = [{'delay': memory_delay_model, 'capacity': memory_capacity, 'decoherence_rate': decoherence_rate}]
+qchannel_args = {'delay': channel_delay_model, 'length': length}
+cchannel_args = {'delay': channel_delay_model, 'length': length}
 
 
 class CustomLineTopology(LineTopology):
@@ -27,9 +44,9 @@ class CustomLineTopology(LineTopology):
         super().__init__(
             nodes_number, 
             nodes_apps=apps_list, 
-            memory_args=[{'capacity': 200, 'delay': memory_delay_model}], 
-            qchannel_args={'delay': channel_delay_model, 'length': length},
-            cchannel_args={'delay': channel_delay_model, 'length': length},
+            memory_args=memory_args, 
+            qchannel_args=qchannel_args,
+            cchannel_args=cchannel_args,
         )
 
     def build(self) -> Tuple[List[VLAwareQNode], List[QuantumChannel]]:
@@ -57,8 +74,14 @@ class CustomDoubleStarTopology(Topology):
     '''
     Custom double star topology for testing virtual link routing: minimum topology for virtual link exploitation
     '''
-    def __init__(self, memory_args=[{'capacity': 50}]):
-        super().__init__(12, memory_args=memory_args, nodes_apps=apps_list)
+    def __init__(self):
+        super().__init__(
+            nodes_number=12, 
+            memory_args=memory_args, 
+            qchannel_args=qchannel_args, 
+            cchannel_args=cchannel_args, 
+            nodes_apps=apps_list
+        )
 
     def build(self) -> Tuple[List[VLAwareQNode], List[QuantumChannel]]:
         nl: List[VLAwareQNode] = []

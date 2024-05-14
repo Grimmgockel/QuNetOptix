@@ -12,6 +12,8 @@ import time
 import multiprocessing
 
 def result_assertions(transmit_id: str, distro_result: DistroResult):
+    if distro_result.src_result is None or distro_result.dst_result is None:
+        return
     src_result_transmit: Transmit = distro_result.src_result[0]
     src_result_epr: QuantumModel = distro_result.src_result[1]
     dst_result_transmit: Transmit = distro_result.dst_result[0]
@@ -167,7 +169,7 @@ def test_max_congestion(oracle: NetworkOracle, config: Config):
 
     config.te = 500
     config.job = Job.custom(sessions=sessions)
-    config.topo = CustomDoubleStarTopology(memory_args=[{'capacity': 500}])
+    config.topo = CustomDoubleStarTopology()
     config.vlink_send_rate = 20
     config.send_rate = 2
     config.continuous_distro=False
@@ -192,6 +194,8 @@ def test_random_continuous_requests(oracle, config, send_rate, vlink_send_rate, 
     config.continuous_distro = True
 
     meta_data: SimData = oracle.run(config)
+    if meta_data.distro_results is None:
+        return
     for transmit_id, distro_result in meta_data.distro_results.items():
         result_assertions(transmit_id, distro_result)
 

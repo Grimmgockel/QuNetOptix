@@ -41,11 +41,12 @@ class RecvQubitOverVL(Event):
 
 
 class VLApp(Application):
-    def __init__(self, name: str):
+    def __init__(self, name: str, init_fidelity: float):
         super().__init__()
 
         # members
         self.app_name: str = name
+        self.init_fidelity = init_fidelity
         self.entanglement_type: Type[QuantumModel] = None
         if name != 'distro' and name != 'maint':
             raise ValueError('Invalid name')
@@ -531,11 +532,11 @@ class VLApp(Application):
 
 
 class VLEnabledDistributionApp(VLApp):
-    def __init__(self):
-        super().__init__('distro')
+    def __init__(self, init_fidelity: float = 0.99):
+        super().__init__('distro', init_fidelity=init_fidelity)
         self.entanglement_type: Type[QuantumModel] = StandardEntangledPair 
 
 class VLMaintenanceApp(VLApp):
-    def __init__(self):
-        super().__init__('maint')
+    def __init__(self, init_fidelity: float = 1):
+        super().__init__('maint', init_fidelity=init_fidelity)
         self.entanglement_type: Type[QuantumModel] = VLEntangledPair 
