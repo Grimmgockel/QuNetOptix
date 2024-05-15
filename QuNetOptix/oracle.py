@@ -66,15 +66,9 @@ class NetworkOracle():
         self._monitor.add_attribution(name="vlink_send_count", calculate_func=lambda s, n, e: sum(app.send_count for req in n.vlinks for app in req.src.apps if hasattr(app, 'app_name') and app.app_name == 'maint'))
         self._monitor.add_attribution(name="remaining_mem_usage", calculate_func=lambda s, n, e: sum(app.memory._usage for node in n.nodes for app in node.apps if hasattr(app, 'memory')))
         self._monitor.add_attribution(name="generation_latency_agg", calculate_func=lambda s, n, e: sum(app.generation_latency_agg for req in n.requests for app in req.src.apps if hasattr(app, 'app_name') and app.app_name == 'distro'))
-        #self._monitor.add_attribution(name="fidelity_agg", calculate_func=self._gather_throughput)
+        self._monitor.add_attribution(name="fidelity_agg", calculate_func=lambda s, n, e: sum(app.fidelity_agg for req in n.requests for app in req.src.apps if hasattr(app, 'app_name') and app.app_name == 'distro'))
 
         # TODO primitive or higher level? 
-        #self._monitor.add_attribution(name="mem_utilization_p", calculate_func=lambda s, n, e: len(self._net.nodes))
-        #self._monitor.add_attribution(name="generation_latency_avg", calculate_func=self._gather_gen_latency)
-        #self._monitor.add_attribution(name="generation_latency_max", calculate_func=self._gather_gen_latency)
-        #self._monitor.add_attribution(name="throughput_avg", calculate_func=self._gather_throughput)
-        #self._monitor.add_attribution(name="congestion_p", calculate_func=self._gather_throughput) (send_rate vs throughput normed to be between 0% and 100%)
-        #self._monitor.add_attribution(name="success_rate", calculate_func=self._gather_throughput)
         #self._monitor.add_attribution(name="fidelity_avg", calculate_func=self._gather_throughput)
         #self._monitor.add_attribution(name="fidelity_loss", calculate_func=self._gather_throughput)
 

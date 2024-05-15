@@ -46,14 +46,37 @@ class SimData:
 
 
     @property
-    def generation_latency(self) -> float:
-        return self.df['generation_latency_agg'][0] / self.df['success_count'][0]
+    def generation_latency_avg(self) -> Optional[float]:
+        try:
+            return self.df['generation_latency_agg'][0] / self.df['success_count'][0]
+        except ZeroDivisionError:
+            return None
+
+    @property
+    def fidelity_avg(self) -> Optional[float]:
+        fidelity_agg = self.df['fidelity_agg'][0]
+        try:
+            fidelity_avg = fidelity_agg / self.success_count
+            return fidelity_avg
+        except ZeroDivisionError:
+            return None
+
+    @property
+    def fidelity_loss_avg(self) -> float:
+        return 1-self.fidelity_avg
 
     @property
     def throughput(self) -> float:
-        throughput_EPps = 1/self.generation_latency
+        throughput_EPps = 1/self.generation_latency_avg
         return throughput_EPps
 
     @property
-    def fidelity(self) -> float:
+    def mem_utilization_p(self) -> float:
+        # TODO
         return 0.0
+
+    @property
+    def generation_latency_max(self) -> float:
+        # TODO
+        return 0.0
+

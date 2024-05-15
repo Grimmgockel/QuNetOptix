@@ -80,6 +80,7 @@ class VLApp(Application):
         self.success_count: int = 0
         self.send_count: int = 0
         self.generation_latency_agg: float = 0.0
+        self.fidelity_agg: float = 0.0
 
     def RecvQubitOverVLHandler(self, node: VLAwareQNode, event: RecvQubitOverVL):
         if not isinstance(event.qubit, self.entanglement_type): 
@@ -383,6 +384,9 @@ class VLApp(Application):
             self.success_count += 1
             gen_latency: float = self._simulator.current_time.sec - transmit.start_time_s
             self.generation_latency_agg += gen_latency
+
+            fidelity = result_epr.fidelity
+            self.fidelity_agg += fidelity
 
             # clear transmission
             self.own.trans_registry[transmit.id] = None
