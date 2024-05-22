@@ -18,7 +18,7 @@ Pre-established entanglement functions similar to a one-time, unidirectional qua
 ## Proof of Concept 
 
 These links are one-time-use and need replenishing after they're used up.
-With the connection-oriented and resource-aware routing of ***citation***, we can have multiple virtual links ready at the source and destination of the shortcut.
+With the connection-oriented and resource-aware routing of ***citation***, multiple virtual links can be ready at the source and destination of the shortcut.
 The setup of virtual links happens alongside the end-to-end distribution. 
 It's like parallelizing a part of the swapping algorithm often used for requests thus avoiding congestion on that subpath.
 
