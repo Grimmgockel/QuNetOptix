@@ -68,6 +68,11 @@ class NetworkOracle():
         self._monitor.add_attribution(name="generation_latency_agg", calculate_func=lambda s, n, e: sum(app.generation_latency_agg for req in n.requests for app in req.src.apps if hasattr(app, 'app_name') and app.app_name == 'distro'))
         self._monitor.add_attribution(name="fidelity_agg", calculate_func=lambda s, n, e: sum(app.fidelity_agg for req in n.requests for app in req.src.apps if hasattr(app, 'app_name') and app.app_name == 'distro'))
 
+        self._monitor.add_attribution(
+            name="gen_latencies", 
+            calculate_func=lambda s, n, e: 
+        )
+
         # TODO primitive or higher level? 
         #self._monitor.add_attribution(name="fidelity_avg", calculate_func=self._gather_throughput)
         #self._monitor.add_attribution(name="fidelity_loss", calculate_func=self._gather_throughput)

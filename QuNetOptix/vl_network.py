@@ -70,7 +70,10 @@ class VLNetwork(QuantumNetwork):
         self.vlinks: List[Request] = []
 
         for vlink in custom_vlinks or []:
-            self.add_vlink(src=self.get_node(vlink[0]), dest=self.get_node(vlink[1]), attr={'send_rate': self.vlink_send_rate})
+            node_index_src = int(vlink[0][1:])
+            node_index_dst = int(vlink[1][1:])
+            if abs(node_index_src - node_index_dst) > 1: # exclude vlinks that have no intermediary node
+                self.add_vlink(src=self.get_node(vlink[0]), dest=self.get_node(vlink[1]), attr={'send_rate': self.vlink_send_rate})
 
         if not self.vlinks:
             # TODO SLS

@@ -15,14 +15,18 @@ from typing import Dict, List, Tuple
 import numpy as np
 
 
+# TODO SEEK OUT PARAMETRES FOR REALISTIC SETTING
 # --------- PARAMETRES --------- 
 light_speed = 299791458 
-length = 20000 # km
-memory_capacity = 500
-decoherence_rate = 0.2
-memory_delay = 0.1 # seconds
-c_node_process_delay = 0
-q_node_process_delay = 0
+length = 200_000 # in m
+memory_capacity = 400
+
+coherence_time = 0.001 # 1ms to 1s for crystal based stuff
+decoherence_rate = 1 / coherence_time
+memory_delay = 50e-6 # 50 microseconds for crystal based stuff
+
+c_node_process_delay = 100e-6 # 100 microseconds
+q_node_process_delay = 0.001 # 1 ms
 init_fidelity = 0.99
 # --------- PARAMETRES --------- 
 

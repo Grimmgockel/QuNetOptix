@@ -14,6 +14,19 @@ Pre-established entanglement functions similar to a one-time, unidirectional qua
     <img src="https://i.imgur.com/9BI2RE2.gif" width="49%" style="border: 1px solid #333333"/>
 </div>
 
+## Hardware Details
+
+### Node Processing
+c node processing delay
+q node processing delay
+
+### Optical Fibre
+optical fibre communication delay
+optical fibre decoherence
+
+### Quantum Memory
+quantum memory delay
+quantum memory decoherence
 
 ## Proof of Concept 
 
@@ -41,7 +54,7 @@ With each additional node, virtual link-enabled routing will bypass one more nod
     <img src="https://i.imgur.com/V3CYkR1.gif" width="24%" style="border: 1px solid #333333"/>
 </div>
 
-The following parametres will be considered...
+### Results
 
 <div style="display: flex; justify-content: space-around;">
     <img src="" width="49%" style="border: 1px solid #333333"/>

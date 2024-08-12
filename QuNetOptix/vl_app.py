@@ -19,7 +19,7 @@ from vl_routing import RoutingResult
 from vl_entanglement import StandardEntangledPair, VLEntangledPair
 from metadata import SimData, DistroResult
 from vl_network import VLNetwork
-from typing import Optional, Dict, Callable, Type, Any, Tuple
+from typing import Optional, Dict, Callable, Type, Any, Tuple, List
 import queue
 import random
 import simple_colors
@@ -80,6 +80,7 @@ class VLApp(Application):
         self.success_count: int = 0
         self.send_count: int = 0
         self.generation_latency_agg: float = 0.0
+        self.gen_latencies: List[float] = []
         self.fidelity_agg: float = 0.0
 
     def RecvQubitOverVLHandler(self, node: VLAwareQNode, event: RecvQubitOverVL):
@@ -133,6 +134,9 @@ class VLApp(Application):
             raise ValueError('Session id required for new distribution')
 
         if self.app_name == 'maint':
+            if self.own.vlink_buf.qsize() >= self.memory.capacity / 4:
+                self.schedule_next_ep_distribution(session_id)
+                return
             if self.net.schedule_n_vlinks is not None: # only distribute n_vlinks virtual links (for testing purposes)
                 if self.vlinks_scheduled >= self.net.schedule_n_vlinks:
                     return
@@ -383,6 +387,7 @@ class VLApp(Application):
             self.net.metadata.distro_results[transmit.id].src_result = (transmit, result_epr)
             self.success_count += 1
             gen_latency: float = self._simulator.current_time.sec - transmit.start_time_s
+            self.gen_latencies.append(gen_latency)
             self.generation_latency_agg += gen_latency
 
             fidelity = result_epr.fidelity

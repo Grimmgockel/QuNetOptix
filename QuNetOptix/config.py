@@ -28,9 +28,9 @@ class Config:
     te: int 
     acc: int 
     topo: Topology
+    job: Job 
     vlink_send_rate: float = 1
     send_rate: float = 1
-    job: Job = None
     continuous_distro: bool = True
     vlinks: List[Tuple[str]] = None
     schedule_n_vlinks: Optional[int] = None
