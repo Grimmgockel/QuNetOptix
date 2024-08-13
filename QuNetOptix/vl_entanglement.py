@@ -3,28 +3,34 @@ from vlaware_qnode import EprAccount
 from typing import Optional
 import numpy as np
 
-class VLEntangledPair(WernerStateEntanglement):
-    '''
-    Custom entanglement for distro app
-    '''
-    def __init__(self, fidelity: float = 1, name: str | None = None, p_swap: float = 1):
-        super().__init__(1, name)
-        self.src = None
-        self.dst = None
-        self.account: EprAccount = None
+from qns.utils.rnd import get_rand
 
-    def store_error_model(self, t: float, decoherence_rate: Optional[float] = 0, **kwargs):
-        self.w = self.w 
-
-    def transfer_error_model(self, length: float, decoherence_rate: Optional[float] = 0, **kwargs):
-        self.w = self.w 
-
-class StandardEntangledPair(WernerStateEntanglement):
+class VLEntangledPair(MixedStateEntanglement):
     '''
     Custom entanglement for maintenance app
     '''
-    def __init__(self, fidelity: float = 1, name: str | None = None, p_swap: float = 1):
-        super().__init__(0.99, name)
+    def __init__(self, fidelity: float = 1, b: float | None = None, c: float | None = None, d: float | None = None, name: str | None = None):
+        super().__init__(fidelity, b, c, d, name)
         self.src = None
         self.dst = None
         self.account: EprAccount = None
+
+    #def store_error_model(self, t: float, decoherence_rate: Optional[float] = 0, **kwargs):
+        #self.w = self.w 
+
+    #def transfer_error_model(self, length: float, decoherence_rate: Optional[float] = 0, **kwargs):
+        #self.w = self.w 
+
+
+
+class StandardEntangledPair(MixedStateEntanglement):
+    '''
+    Custom entanglement for distro app
+    '''
+    def __init__(self, fidelity: float = 1, b: float | None = None, c: float | None = None, d: float | None = None, name: str | None = None):
+        super().__init__(fidelity, b, c, d, name)
+        self.src = None
+        self.dst = None
+        self.account: EprAccount = None
+
+

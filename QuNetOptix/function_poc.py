@@ -37,7 +37,7 @@ if __name__ == '__main__':
     vlink_fidelity_loss_avg = []
 
     # no vlinks
-    for i in range(4, 13):
+    for i in range(4, 30):
         ts=0
         te=50
         acc=1_000_000_000
@@ -69,7 +69,7 @@ if __name__ == '__main__':
         fidelity_loss_avg.append(metadata.fidelity_loss_avg)
 
     # vlinks
-    for i in range(4, 13):
+    for i in range(4, 30):
         ts=0
         te=50
         acc=1_000_000_000

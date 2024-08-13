@@ -134,7 +134,7 @@ class VLApp(Application):
             raise ValueError('Session id required for new distribution')
 
         if self.app_name == 'maint':
-            if self.own.vlink_buf.qsize() >= self.memory.capacity / 4:
+            if len(self.own.vlink_buf) >= self.memory.capacity / 4:
                 self.schedule_next_ep_distribution(session_id)
                 return
             if self.net.schedule_n_vlinks is not None: # only distribute n_vlinks virtual links (for testing purposes)
@@ -190,8 +190,8 @@ class VLApp(Application):
         # put into queue and exit if its vlink distro
         if routing_result.vlink and self.app_name == 'distro':
             next_hop: VLAwareQNode = routing_result.next_hop_virtual
-            self.own.waiting_for_vlink_buf.put_nowait(transmit)
-            if self.own.vlink_buf.empty() and next_hop.vlink_buf.empty():
+            self.own.waiting_for_vlink_buf.append(transmit)
+            if len(self.own.vlink_buf) == 0 and len(next_hop.vlink_buf) == 0:
                 self.log_trans(f'waiting for vlink on {self.own.name} to {next_hop.name}\t[{epr}]', transmit=transmit)
                 self.waiting_for_vlink = True
                 return
@@ -322,7 +322,9 @@ class VLApp(Application):
             # swap and manage new epr
             first: self.entanglement_type = self.memory.read(transmit.alice.name)
             second: self.entanglement_type = self.memory.read(transmit.charlie.name)
-            new_epr: self.entanglement_type = self.entanglement_type(first.swapping(second))
+            new_epr = first.swapping(second)
+            new_epr: self.entanglement_type = self.entanglement_type(fidelity=new_epr.a, b=new_epr.b, c=new_epr.c, d=new_epr.d)
+
             new_epr.name = uuid.uuid4().hex
             new_epr.account = EprAccount(
                 transmit_id=transmit.id,
@@ -400,12 +402,12 @@ class VLApp(Application):
         self.log_trans(simple_colors.magenta(f'established vlink ({self.own.name}, {src_node.name})'), transmit=transmit)
         self.success_count += 1
 
-        self.own.vlink_buf.put_nowait(transmit)
-        src_node.vlink_buf.put_nowait(transmit)
+        self.own.vlink_buf.append(transmit)
+        src_node.vlink_buf.append(transmit)
 
         # decide where to notify about new vlink
-        src_waiting = not self.own.waiting_for_vlink_buf.empty()
-        dst_waiting = not transmit.dst.waiting_for_vlink_buf.empty()
+        src_waiting = len(self.own.waiting_for_vlink_buf) != 0 
+        dst_waiting = len(transmit.dst.waiting_for_vlink_buf) != 0
         tgt: Optional[VLAwareQNode] = None
 
         if src_waiting and not dst_waiting:
@@ -421,23 +423,26 @@ class VLApp(Application):
             self.send_control(tgt, transmit, "vlink", "distro") 
 
     def _vlink(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
-        if self.own.waiting_for_vlink_buf.empty() or self.own.vlink_buf.empty(): # someone else was faster
+        if len(self.own.waiting_for_vlink_buf) == 0 or len(self.own.vlink_buf) == 0 : # someone else was faster
             return
             #raise Exception("Race condition probably :)")
 
-        transmit_to_teleport: Transmit = self.own.waiting_for_vlink_buf.get_nowait()
-        vlink_transmit: Transmit = self.own.vlink_buf.get_nowait()
+        transmit_to_teleport: Transmit = self.own.waiting_for_vlink_buf.popleft()
+        vlink_transmit: Transmit = self.own.vlink_buf.pop()
+
+        #vlink_buf_list = list(self.own.vlink_buf.queue)
+        #vlink_transmit: Transmit = vlink_buf_list[-1]
 
 
         dir = 'backward' if self.own == vlink_transmit.dst else 'forward'
         if dir == 'forward':
-            other_side: Transmit = vlink_transmit.dst.vlink_buf.get_nowait() # remove from other side
+            other_side: Transmit = vlink_transmit.dst.vlink_buf.pop() # remove from other side
             if transmit_to_teleport.alice is None and vlink_transmit.src == transmit_to_teleport.src: # start node is vlink node forward if alice is none
                 first = self.memory.read(transmit_to_teleport.charlie.name) 
             else:
                 first = self.memory.read(transmit_to_teleport.alice.name) 
         if dir == 'backward':
-            other_side: Transmit = vlink_transmit.src.vlink_buf.get_nowait() # remove from other side
+            other_side: Transmit = vlink_transmit.src.vlink_buf.pop() # remove from other side
             if transmit_to_teleport.alice is None and vlink_transmit.dst == transmit_to_teleport.src: # start node is vlink node forward if alice is none
                 first = self.memory.read(transmit_to_teleport.charlie.name)
             else:
@@ -448,8 +453,18 @@ class VLApp(Application):
 
         second = self.memory.read(vlink_transmit.charlie.name) 
 
+        # distill vlink
+        #print(f'second fid {second.fidelity}')
+        #tmp_acc = second.account
+        #second = second.distillation(VLEntangledPair())
+        #second: VLEntangledPair = VLEntangledPair(fidelity=second.a, b=second.b, c=second.c, d=second.d, name=second.name)
+        #second.account = tmp_acc
+
         # swap with vlink
-        new_epr: self.entanglement_type = self.entanglement_type(first.swapping(second))
+        new_epr = first.swapping(second)
+        new_epr: self.entanglement_type = self.entanglement_type(fidelity=new_epr.a, b=new_epr.b, c=new_epr.c, d=new_epr.d)
+        #new_epr: self.entanglement_type = self.entanglement_type(new_epr.distillation(self.entanglement_type()))
+
         new_epr.name = uuid.uuid4().hex
         new_epr.account = EprAccount(
             transmit_id=transmit_to_teleport.id,
@@ -459,6 +474,7 @@ class VLApp(Application):
             locA=first.account.locA,
             locB=second.account.locB,
         )
+
 
         # set new EP in Alice (request src)
         backward_node: VLAwareQNode = transmit_to_teleport.src

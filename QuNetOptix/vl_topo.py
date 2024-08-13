@@ -21,7 +21,7 @@ light_speed = 299791458
 length = 200_000 # in m
 memory_capacity = 400
 
-coherence_time = 0.001 # 1ms to 1s for crystal based stuff
+coherence_time = 1 # 1ms to 1s for crystal based stuff
 decoherence_rate = 1 / coherence_time
 memory_delay = 50e-6 # 50 microseconds for crystal based stuff
 
