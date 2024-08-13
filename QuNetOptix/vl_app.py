@@ -135,6 +135,11 @@ class VLApp(Application):
 
         if self.app_name == 'maint':
             if len(self.own.vlink_buf) >= self.memory.capacity / 4:
+
+                #deprecated_vlink_transmit: Transmit = self.own.vlink_buf.popleft()
+                #read_request = MemoryReadRequestEvent(memory=self.memory, key=deprecated_vlink_transmit.charlie.name, t=self._simulator.current_time, by=(self.app_name, None, deprecated_vlink_transmit, self.own, 'revoke'))
+                #self._simulator.add_event(read_request)
+
                 self.schedule_next_ep_distribution(session_id)
                 return
             if self.net.schedule_n_vlinks is not None: # only distribute n_vlinks virtual links (for testing purposes)

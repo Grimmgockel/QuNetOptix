@@ -39,7 +39,7 @@ if __name__ == '__main__':
     # no vlinks
     for i in range(4, 30):
         ts=0
-        te=50
+        te=10
         acc=1_000_000_000
         send_rate = 10
         vlink_send_rate_hz = 2*send_rate
@@ -71,7 +71,7 @@ if __name__ == '__main__':
     # vlinks
     for i in range(4, 30):
         ts=0
-        te=50
+        te=10
         acc=1_000_000_000
         send_rate = 10
         vlink_send_rate_hz = 2*send_rate
