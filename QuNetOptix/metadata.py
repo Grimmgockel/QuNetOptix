@@ -25,8 +25,13 @@ class SimData:
     vlink_requests: Set[Request] = None
     distro_results: Dict[str, DistroResult] = None
 
+
     # sim performance data
     df = pd.DataFrame()
+
+    @property
+    def swap_count(self) -> int:
+        return self.df['swap_count'][0]
 
     @property
     def send_count(self) -> int:

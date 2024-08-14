@@ -76,6 +76,7 @@ class VLApp(Application):
         self.add_handler(self.RecvClassicPacketHandler, [RecvClassicPacket])
 
         # meta data
+        self.swap_count: int = 0
         self.success_eprs = []
         self.success_count: int = 0
         self.send_count: int = 0
@@ -168,7 +169,7 @@ class VLApp(Application):
             src=session_src,
             dst=session_dst,
             charlie=epr.account, # only set forward for first node
-            start_time_s=self._simulator.current_time.sec
+            start_time_s=self._simulator.current_time.sec,
         )
         self.own.trans_registry[epr.account.transmit_id] = transmit
         self.log_trans(f'start new ep distribution: {transmit.src} -> {transmit.dst} [epr={epr.name}]', transmit=transmit)
@@ -328,6 +329,7 @@ class VLApp(Application):
             first: self.entanglement_type = self.memory.read(transmit.alice.name)
             second: self.entanglement_type = self.memory.read(transmit.charlie.name)
             new_epr = first.swapping(second)
+            self.swap_count = self.swap_count + 1
             new_epr: self.entanglement_type = self.entanglement_type(fidelity=new_epr.a, b=new_epr.b, c=new_epr.c, d=new_epr.d)
 
             new_epr.name = uuid.uuid4().hex
@@ -388,7 +390,7 @@ class VLApp(Application):
     def success(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
         if self.app_name == 'distro':
             result_epr: QuantumModel = self.memory.read(transmit.charlie.name)
-            self.log_trans(simple_colors.green(f"successful distribution of [result_epr={result_epr}]"), transmit=transmit)
+            self.log_trans(simple_colors.green(f"successful distribution of [result_epr={result_epr}]"), transmit=transmit, loglvl=log.logging.INFO)
 
             # KPIs
             self.net.metadata.distro_results[transmit.id].src_result = (transmit, result_epr)
@@ -404,7 +406,7 @@ class VLApp(Application):
             self.own.trans_registry[transmit.id] = None
             return
 
-        self.log_trans(simple_colors.magenta(f'established vlink ({self.own.name}, {src_node.name})'), transmit=transmit)
+        self.log_trans(simple_colors.magenta(f'established vlink ({self.own.name}, {src_node.name})'), transmit=transmit, loglvl=log.logging.INFO)
         self.success_count += 1
 
         self.own.vlink_buf.append(transmit)
@@ -467,6 +469,7 @@ class VLApp(Application):
 
         # swap with vlink
         new_epr = first.swapping(second)
+        self.swap_count += 1
         new_epr: self.entanglement_type = self.entanglement_type(fidelity=new_epr.a, b=new_epr.b, c=new_epr.c, d=new_epr.d)
         #new_epr: self.entanglement_type = self.entanglement_type(new_epr.distillation(self.entanglement_type()))
 
@@ -554,7 +557,7 @@ class VLApp(Application):
         # safe new epr
         self.memory.write(epr) # synchronous storage for realism 
 
-    def log_trans(self, str: str, transmit: Transmit = None):
+    def log_trans(self, str: str, transmit: Transmit = None, loglvl = log.logging.DEBUG):
         if transmit is None:
             log.debug(f'\t[{self.own.name}]\t{self.memory._usage}/{self.memory.capacity}\t{self.app_name}\tNone:\t{str}')
         else:

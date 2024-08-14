@@ -65,6 +65,7 @@ class NetworkOracle():
         self._monitor.add_attribution(name="send_count", calculate_func=lambda s, n, e: sum(app.send_count for req in n.requests for app in req.src.apps if hasattr(app, 'app_name') and app.app_name == 'distro'))
         self._monitor.add_attribution(name="vlink_send_count", calculate_func=lambda s, n, e: sum(app.send_count for req in n.vlinks for app in req.src.apps if hasattr(app, 'app_name') and app.app_name == 'maint'))
         self._monitor.add_attribution(name="remaining_mem_usage", calculate_func=lambda s, n, e: sum(app.memory._usage for node in n.nodes for app in node.apps if hasattr(app, 'memory')))
+        self._monitor.add_attribution(name="swap_count", calculate_func=lambda s, n, e: sum(app.swap_count for node in n.nodes for app in node.apps if hasattr(app, 'app_name') and app.app_name == 'distro'))
         self._monitor.add_attribution(name="generation_latency_agg", calculate_func=lambda s, n, e: sum(app.generation_latency_agg for req in n.requests for app in req.src.apps if hasattr(app, 'app_name') and app.app_name == 'distro'))
         self._monitor.add_attribution(name="fidelity_agg", calculate_func=lambda s, n, e: sum(app.fidelity_agg for req in n.requests for app in req.src.apps if hasattr(app, 'app_name') and app.app_name == 'distro'))
 

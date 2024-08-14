@@ -37,12 +37,12 @@ if __name__ == '__main__':
     vlink_fidelity_loss_avg = []
 
     # no vlinks
-    for i in range(4, 30):
+    for i in range(17, 21):
         ts=0
         te=10
         acc=1_000_000_000
         send_rate = 10
-        vlink_send_rate_hz = 2*send_rate
+        vlink_send_rate_hz = 1.5*send_rate
         nodes_number = i
 
         oracle = NetworkOracle()
@@ -61,7 +61,8 @@ if __name__ == '__main__':
         )
 
         metadata: SimData = oracle.run(config, loglvl=log.logging.INFO)
-        print(f'n={i}; \t eps={metadata.throughput}; \t fid={metadata.fidelity_avg} \t succ={metadata.success_rate_p} \t distros={metadata.success_count}/{metadata.send_count}')
+        print(f'n={i}; eps={metadata.throughput}; lat={metadata.generation_latency_avg}; fid={metadata.fidelity_avg}; fid_loss={metadata.fidelity_loss_avg}; succ={metadata.success_rate_p}; distros={metadata.success_count}/{metadata.send_count}; mem={metadata.remaining_mem_usage}; swaps={metadata.swap_count}')
+
 
         number_nodes.append(i)
         throughput.append(metadata.throughput)
@@ -69,12 +70,12 @@ if __name__ == '__main__':
         fidelity_loss_avg.append(metadata.fidelity_loss_avg)
 
     # vlinks
-    for i in range(4, 30):
+    for i in range(17, 21):
         ts=0
         te=10
         acc=1_000_000_000
         send_rate = 10
-        vlink_send_rate_hz = 2*send_rate
+        vlink_send_rate_hz = send_rate
         nodes_number = i
 
         oracle = NetworkOracle()
@@ -93,7 +94,7 @@ if __name__ == '__main__':
         )
 
         metadata: SimData = oracle.run(config, loglvl=log.logging.INFO)
-        print(f'n={i}; \t eps={metadata.throughput}; \t fid={metadata.fidelity_avg} \t succ={metadata.success_rate_p} \t distros={metadata.success_count}/{metadata.send_count}')
+        print(f'n={i}; eps={metadata.throughput}; lat={metadata.generation_latency_avg}; fid={metadata.fidelity_avg}; fid_loss={metadata.fidelity_loss_avg}; succ={metadata.success_rate_p}; distros={metadata.success_count}/{metadata.send_count}; mem={metadata.remaining_mem_usage}; swaps={metadata.swap_count}')
 
 
         vlink_throughput.append(metadata.throughput)
