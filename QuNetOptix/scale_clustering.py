@@ -28,7 +28,7 @@ if __name__ == '__main__':
         acc=acc,
         vlink_send_rate=vlink_send_rate_hz,
         send_rate=send_rate,
-        #topo=RandomTopology(nodes_number=10, lines_number=15),
+        #topo=RandomTopology(nodes_number=20, lines_number=25),
         topo=CustomDoubleStarTopology(),
         continuous_distro=True,
         job = Job.custom(sessions=[('n0', 'n11')]),

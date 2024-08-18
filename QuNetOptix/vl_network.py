@@ -1,6 +1,7 @@
 from qns.network import QuantumNetwork
 from qns.network.topology import Topology
 from qns.network.network import ClassicTopology
+import itertools
 from qns.network.requests import Request
 from vlaware_qnode import VLAwareQNode
 from vl_routing import VLEnabledRouteAlgorithm
@@ -16,6 +17,8 @@ import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from node2vec import Node2Vec
+from community import community_louvain
+from collections import defaultdict
 
 class VLNetGraph():
     '''
@@ -52,7 +55,7 @@ class VLNetwork(QuantumNetwork):
     '''
     Quantum network containing special request types called superlinks, that are considered for routing as entanglement links
     '''
-    def __init__(self, topo: Topology, metadata: SimData, continuous_distro: bool, schedule_n_vlinks: Optional[int], custom_vlinks: List[Tuple[str]], vlink_send_rate: float, k: int = 2):
+    def __init__(self, topo: Topology, metadata: SimData, continuous_distro: bool, schedule_n_vlinks: Optional[int], custom_vlinks: List[Tuple[str]], vlink_send_rate: float, k: int = 1):
         # init metadata
         self.metadata: SimData = metadata
         self.metadata.distribution_requests = set()
@@ -82,54 +85,42 @@ class VLNetwork(QuantumNetwork):
                 self.add_vlink(src=self.get_node(vlink[0]), dest=self.get_node(vlink[1]), attr={'send_rate': self.vlink_send_rate})
 
         self.physical_graph = VLNetGraph(self.nodes, self.qchannels)
-        if not self.vlinks:
-            print('SLS')
+        if not custom_vlinks:
 
+            # louvain algorithm
+            partition = community_louvain.best_partition(self.physical_graph.graph, randomize=True)
+            communities = defaultdict(list)
+            for node, community in partition.items():
+                communities[community].append(node)
+            sorted_communities = dict(sorted(communities.items(), key=lambda x: len(x[1]), reverse=True))
 
-            centrality = np.array(list(nx.degree_centrality(self.physical_graph.graph).values()))
-            centrality = centrality.reshape(-1, 1)
+            # centroids
+            centroid_nodes = [self.find_centroid(self.physical_graph.graph, nodes).name for nodes in sorted_communities.values()]
 
-            sorted_nodes_by_centrality = np.argsort(centrality.flatten())[::-1]
-            central_nodes = list(sorted_nodes_by_centrality[:2])
+            usable_nodes = centroid_nodes[:(len(centroid_nodes) // 2) * 2]
+            vlink_pairs = list(itertools.zip_longest(*[iter(usable_nodes)] * 2))
+            vlink_pairs = vlink_pairs[:k]
+            print(f'identified vlinks: {vlink_pairs}')
+            if vlink_pairs:
+                for vlink_pair in vlink_pairs:
+                    src_node = self.get_node(vlink_pair[0])
+                    tgt_node = self.get_node(vlink_pair[1])
+                    self.add_vlink(src=src_node, dest=tgt_node, attr={'send_rate': self.vlink_send_rate})
 
-            # proximity features
-            node_list = list(self.physical_graph.graph.nodes)
-            num_nodes = len(self.physical_graph.graph.nodes)
-            proximity_matrix = np.zeros((num_nodes, num_nodes))
-            for i, node in enumerate(self.physical_graph.graph.nodes):
-                for j, central_node_index in enumerate(central_nodes):
-                    central_node = node_list[central_node_index]
-                    if nx.has_path(self.physical_graph.graph, node, central_node):
-                        shortest_path_length = nx.shortest_path_length(self.physical_graph.graph, source=node, target=central_node)
-                        proximity_matrix[i, j] = 1 / (shortest_path_length + 1)
+            # Draw the graph with nodes colored by their community
+            pos = nx.spring_layout(self.physical_graph.graph)  # For better visualization
 
-            sorted_nodes_by_centrality = np.argsort(centrality.flatten())[::-1]
-            central_nodes = list(sorted_nodes_by_centrality[:2])
+            # Draw the nodes with community colors
+            cmap = plt.get_cmap('viridis', len(set(partition.values())))
+            nx.draw_networkx_nodes(self.physical_graph.graph, pos, partition.keys(), node_size=100,
+                                cmap=cmap, node_color=list(partition.values()))
 
-            features = np.hstack([centrality, proximity_matrix])
+            # Draw the edges
+            nx.draw_networkx_edges(self.physical_graph.graph, pos, alpha=0.5)
 
-            kmeans = KMeans(n_clusters=4)
-            kmeans.fit(features)
-            labels = kmeans.labels_
+            nx.draw_networkx_labels(self.physical_graph.graph, pos, font_size=10, font_family='sans-serif')
 
-            # Create a layout for nodes
-            pos = nx.spring_layout(self.physical_graph.graph)
-
-            # Draw the graph
-            plt.figure(figsize=(8, 6))
-
-            # Draw nodes with color based on cluster labels
-            nx.draw_networkx_nodes(self.physical_graph.graph, pos, node_color=labels, cmap=plt.cm.RdYlBu, node_size=500)
-            nx.draw_networkx_edges(self.physical_graph.graph, pos)
-            nx.draw_networkx_labels(self.physical_graph.graph, pos)
-
-            plt.title('k-means Clustering Based on Centrality and Proximity')
             plt.show()
-
-
-            # TODO SLS
-            # TODO at this point the network graph is built, based on the graph requests for virtual links need to be produced
-            # TODO one superlink per node, look at random_requests in QuantumNetwork
 
         # set routing algorithm
         self.vlink_graph = VLNetGraph(self.nodes, self.qchannels, vlinks=self.vlinks, lvl=1)
@@ -141,15 +132,10 @@ class VLNetwork(QuantumNetwork):
         src.add_vlink(vlink)
         dest.add_vlink(vlink)
 
-    # Compute proximity features: distance to central nodes
-    def compute_proximity_features(self, graph, central_nodes):
-        num_nodes = len(graph.nodes)
-        proximity_matrix = np.zeros((num_nodes, num_nodes))
-        for i, node in enumerate(graph.nodes):
-            for j, central_node in enumerate(central_nodes):
-                if nx.has_path(graph, node.index, central_node):
-                    shortest_path_length = nx.shortest_path_length(graph, source=node, target=central_node)
-                    proximity_matrix[i, j] = 1 / (shortest_path_length + 1)  # Inverse distance as feature
-        return proximity_matrix
+    def find_centroid(self, G, nodes):
+        subgraph = G.subgraph(nodes)
+        centroid = nx.center(subgraph)[0]
+        return centroid
+
     
 
