@@ -7,6 +7,7 @@ from typing import List, Dict, Optional, Tuple
 from typing import Optional
 from dataclasses import dataclass
 from collections import deque
+import re
 #import queue
 
 
@@ -30,6 +31,13 @@ class VLAwareQNode(QNode):
     def add_vlink(self, vlink: Request):
         self.vlinks.append(vlink)
 
+    @property
+    def index(self) -> int:
+        match = re.search(r'n(\d+)', self.name)
+        if match:
+            return int(match.group(1))
+        else:
+            raise ValueError(f'Label \'{self.name}\' does not match expected format')
 
 @dataclass
 class EprAccount:

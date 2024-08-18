@@ -11,6 +11,11 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from dataclasses import dataclass
 import queue
+import numpy as np
+import pandas as pd
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+from node2vec import Node2Vec
 
 class VLNetGraph():
     '''
@@ -57,6 +62,7 @@ class VLNetwork(QuantumNetwork):
         self.metadata.entanglement_log_timestamps = {} # for plotting
 
         # members
+        self.k = k
         self.name = 'vl network'
         self.vlink_send_rate = vlink_send_rate
         self.continuous_distro: bool = continuous_distro
@@ -77,10 +83,53 @@ class VLNetwork(QuantumNetwork):
 
         self.physical_graph = VLNetGraph(self.nodes, self.qchannels)
         if not self.vlinks:
+            print('SLS')
+
+
+            centrality = np.array(list(nx.degree_centrality(self.physical_graph.graph).values()))
+            centrality = centrality.reshape(-1, 1)
+
+            sorted_nodes_by_centrality = np.argsort(centrality.flatten())[::-1]
+            central_nodes = list(sorted_nodes_by_centrality[:2])
+
+            # proximity features
+            node_list = list(self.physical_graph.graph.nodes)
+            num_nodes = len(self.physical_graph.graph.nodes)
+            proximity_matrix = np.zeros((num_nodes, num_nodes))
+            for i, node in enumerate(self.physical_graph.graph.nodes):
+                for j, central_node_index in enumerate(central_nodes):
+                    central_node = node_list[central_node_index]
+                    if nx.has_path(self.physical_graph.graph, node, central_node):
+                        shortest_path_length = nx.shortest_path_length(self.physical_graph.graph, source=node, target=central_node)
+                        proximity_matrix[i, j] = 1 / (shortest_path_length + 1)
+
+            sorted_nodes_by_centrality = np.argsort(centrality.flatten())[::-1]
+            central_nodes = list(sorted_nodes_by_centrality[:2])
+
+            features = np.hstack([centrality, proximity_matrix])
+
+            kmeans = KMeans(n_clusters=4)
+            kmeans.fit(features)
+            labels = kmeans.labels_
+
+            # Create a layout for nodes
+            pos = nx.spring_layout(self.physical_graph.graph)
+
+            # Draw the graph
+            plt.figure(figsize=(8, 6))
+
+            # Draw nodes with color based on cluster labels
+            nx.draw_networkx_nodes(self.physical_graph.graph, pos, node_color=labels, cmap=plt.cm.RdYlBu, node_size=500)
+            nx.draw_networkx_edges(self.physical_graph.graph, pos)
+            nx.draw_networkx_labels(self.physical_graph.graph, pos)
+
+            plt.title('k-means Clustering Based on Centrality and Proximity')
+            plt.show()
+
+
             # TODO SLS
             # TODO at this point the network graph is built, based on the graph requests for virtual links need to be produced
             # TODO one superlink per node, look at random_requests in QuantumNetwork
-            pass
 
         # set routing algorithm
         self.vlink_graph = VLNetGraph(self.nodes, self.qchannels, vlinks=self.vlinks, lvl=1)
@@ -91,4 +140,16 @@ class VLNetwork(QuantumNetwork):
         self.vlinks.append(vlink)
         src.add_vlink(vlink)
         dest.add_vlink(vlink)
+
+    # Compute proximity features: distance to central nodes
+    def compute_proximity_features(self, graph, central_nodes):
+        num_nodes = len(graph.nodes)
+        proximity_matrix = np.zeros((num_nodes, num_nodes))
+        for i, node in enumerate(graph.nodes):
+            for j, central_node in enumerate(central_nodes):
+                if nx.has_path(graph, node.index, central_node):
+                    shortest_path_length = nx.shortest_path_length(graph, source=node, target=central_node)
+                    proximity_matrix[i, j] = 1 / (shortest_path_length + 1)  # Inverse distance as feature
+        return proximity_matrix
+    
 
