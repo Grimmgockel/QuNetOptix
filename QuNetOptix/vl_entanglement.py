@@ -15,12 +15,12 @@ class VLEntangledPair(MixedStateEntanglement):
         self.dst = None
         self.account: EprAccount = None
 
-    def store_error_model(self, t: float, decoherence_rate: Optional[float] = 0, **kwargs):
+    #def store_error_model(self, t: float, decoherence_rate: Optional[float] = 0, **kwargs):
         #self.w = self.w 
-        pass
+        #pass
 
-    def transfer_error_model(self, length: float, decoherence_rate: Optional[float] = 0, **kwargs):
-        pass
+    #def transfer_error_model(self, length: float, decoherence_rate: Optional[float] = 0, **kwargs):
+        #pass
         #self.w = self.w 
 
 

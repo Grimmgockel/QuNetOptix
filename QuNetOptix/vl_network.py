@@ -47,7 +47,7 @@ class VLNetwork(QuantumNetwork):
     '''
     Quantum network containing special request types called superlinks, that are considered for routing as entanglement links
     '''
-    def __init__(self, topo: Topology, metadata: SimData, continuous_distro: bool, schedule_n_vlinks: Optional[int], custom_vlinks: List[Tuple[str]], vlink_send_rate: float):
+    def __init__(self, topo: Topology, metadata: SimData, continuous_distro: bool, schedule_n_vlinks: Optional[int], custom_vlinks: List[Tuple[str]], vlink_send_rate: float, k: int = 2):
         # init metadata
         self.metadata: SimData = metadata
         self.metadata.distribution_requests = set()
@@ -75,6 +75,7 @@ class VLNetwork(QuantumNetwork):
             if abs(node_index_src - node_index_dst) > 1: # exclude vlinks that have no intermediary node
                 self.add_vlink(src=self.get_node(vlink[0]), dest=self.get_node(vlink[1]), attr={'send_rate': self.vlink_send_rate})
 
+        self.physical_graph = VLNetGraph(self.nodes, self.qchannels)
         if not self.vlinks:
             # TODO SLS
             # TODO at this point the network graph is built, based on the graph requests for virtual links need to be produced
@@ -82,7 +83,6 @@ class VLNetwork(QuantumNetwork):
             pass
 
         # set routing algorithm
-        self.physical_graph = VLNetGraph(self.nodes, self.qchannels)
         self.vlink_graph = VLNetGraph(self.nodes, self.qchannels, vlinks=self.vlinks, lvl=1)
         self.route = VLEnabledRouteAlgorithm(self.physical_graph, self.vlink_graph)
 

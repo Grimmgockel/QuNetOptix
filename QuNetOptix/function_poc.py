@@ -43,7 +43,7 @@ if __name__ == '__main__':
     vlink_c_message_counts = []
 
     # no vlinks
-    for i in range(5, 20):
+    for i in range(5, 100):
         ts=0
         te=10
         acc=1_000_000_000
@@ -79,7 +79,7 @@ if __name__ == '__main__':
         q_message_counts.append(metadata.q_message_count)
 
     # vlinks
-    for i in range(5, 20):
+    for i in range(5, 100):
         ts=0
         te=10
         acc=1_000_000_000
@@ -128,7 +128,8 @@ if __name__ == '__main__':
     plt.legend()
     plt.ylim(0, 150)
     plt.tight_layout()
-    plt.savefig('plots/throughput_poc.svg', format='svg')
+    #plt.savefig('plots/throughput_poc.svg', format='svg')
+    plt.show()
 
     # FIDELITY
     plt.figure(figsize=(12,6))
@@ -139,7 +140,8 @@ if __name__ == '__main__':
     plt.ylim(0, 1)
     plt.legend()
     plt.tight_layout()
-    plt.savefig('plots/fidelity_poc.svg', format='svg')
+    #plt.savefig('plots/fidelity_poc.svg', format='svg')
+    plt.savefig('plots/fidelity_imperfect_vlinks.svg', format='svg')
 
     # TRAFFIC
     fig, axs = plt.subplots(3, 2, figsize=(12, 12))
@@ -174,7 +176,8 @@ if __name__ == '__main__':
     axs[2, 1].set_ylim(bottom=0)
     axs[2, 1].legend()
     plt.tight_layout()
-    plt.savefig('plots/traffic.svg', format='svg')
+    #plt.savefig('plots/traffic.svg', format='svg')
+    plt.show()
 
 
         # TODO start distro as soon as vlinks are established

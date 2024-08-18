@@ -123,7 +123,7 @@ class VLApp(Application):
                 self.own.session_registry[session_id] = {'src': request.src, 'dst': request.dest}
                 request.dest.session_registry[session_id] = {'src': request.src, 'dst': request.dest} 
 
-                # start first ep distro
+                # start distro
                 self.send_rate = request.attr['send_rate'] 
                 event = func_to_event(simulator.ts, self.start_ep_distribution, by=self, session_id=session_id)
                 self._simulator.add_event(event)
