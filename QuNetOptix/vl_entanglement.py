@@ -19,7 +19,8 @@ class VLEntangledPair(MixedStateEntanglement):
         #self.w = self.w 
         pass
 
-    #def transfer_error_model(self, length: float, decoherence_rate: Optional[float] = 0, **kwargs):
+    def transfer_error_model(self, length: float, decoherence_rate: Optional[float] = 0, **kwargs):
+        pass
         #self.w = self.w 
 
 

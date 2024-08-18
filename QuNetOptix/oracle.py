@@ -68,6 +68,8 @@ class NetworkOracle():
         self._monitor.add_attribution(name="swap_count", calculate_func=lambda s, n, e: sum(app.swap_count for node in n.nodes for app in node.apps if hasattr(app, 'app_name') and app.app_name == 'distro'))
         self._monitor.add_attribution(name="generation_latency_agg", calculate_func=lambda s, n, e: sum(app.generation_latency_agg for req in n.requests for app in req.src.apps if hasattr(app, 'app_name') and app.app_name == 'distro'))
         self._monitor.add_attribution(name="fidelity_agg", calculate_func=lambda s, n, e: sum(app.fidelity_agg for req in n.requests for app in req.src.apps if hasattr(app, 'app_name') and app.app_name == 'distro'))
+        self._monitor.add_attribution(name="q_message_count", calculate_func=lambda s, n, e: sum(app.q_message_count for node in n.nodes for app in node.apps if hasattr(app, 'app_name') and (app.app_name == 'distro' or app.app_name == 'maint')))
+        self._monitor.add_attribution(name="c_message_count", calculate_func=lambda s, n, e: sum(app.c_message_count for node in n.nodes for app in node.apps if hasattr(app, 'app_name') and (app.app_name == 'distro' or app.app_name == 'maint')))
 
         #self._monitor.add_attribution(
             #name="gen_latencies", 

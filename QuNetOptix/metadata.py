@@ -30,7 +30,15 @@ class SimData:
     df = pd.DataFrame()
 
     @property
-    def swap_count(self) -> int:
+    def q_message_count(self) -> int:
+        return self.df['q_message_count'][0]
+
+    @property
+    def c_message_count(self) -> int:
+        return self.df['c_message_count'][0]
+
+    @property
+    def agg_swap_count(self) -> int:
         return self.df['swap_count'][0]
 
     @property
@@ -40,6 +48,10 @@ class SimData:
     @property
     def success_count(self) -> int:
         return self.df['success_count'][0]
+
+    @property
+    def avg_swap_count(self) -> int:
+        return self.agg_swap_count / self.success_count
 
     @property
     def remaining_mem_usage(self) -> int:

@@ -76,6 +76,9 @@ class VLApp(Application):
         self.add_handler(self.RecvClassicPacketHandler, [RecvClassicPacket])
 
         # meta data
+        self.test: int = 0
+        self.c_message_count: int = 0
+        self.q_message_count: int = 0
         self.swap_count: int = 0
         self.success_eprs = []
         self.success_count: int = 0
@@ -136,11 +139,6 @@ class VLApp(Application):
 
         if self.app_name == 'maint':
             if len(self.own.vlink_buf) >= self.memory.capacity / 4:
-
-                #deprecated_vlink_transmit: Transmit = self.own.vlink_buf.popleft()
-                #read_request = MemoryReadRequestEvent(memory=self.memory, key=deprecated_vlink_transmit.charlie.name, t=self._simulator.current_time, by=(self.app_name, None, deprecated_vlink_transmit, self.own, 'revoke'))
-                #self._simulator.add_event(read_request)
-
                 self.schedule_next_ep_distribution(session_id)
                 return
             if self.net.schedule_n_vlinks is not None: # only distribute n_vlinks virtual links (for testing purposes)
@@ -209,6 +207,8 @@ class VLApp(Application):
         qchannel: QuantumChannel = self.own.get_qchannel(next_hop)
         if qchannel is None:
             raise Exception(f"{self}: No such quantum channel.")
+        if self.app_name == 'distro':
+            self.q_message_count += 1
         qchannel.send(epr, next_hop=next_hop)
 
     def MemoryWriteResponseHandler(self, node, event: MemoryWriteResponseEvent):
@@ -303,6 +303,8 @@ class VLApp(Application):
             dest=dst
         )
         self.log_trans(f'sending \'{control}\' to {dst.name}', transmit=transmit)
+        if self.app_name == 'distro':
+            self.c_message_count += 1
         cchannel.send(classic_packet, next_hop=dst)
 
     def receive_control(self, node: VLAwareQNode, e: RecvClassicPacket):
@@ -427,6 +429,7 @@ class VLApp(Application):
             tgt = self.own if coinflip_result else transmit.dst
 
         if tgt is not None:
+            self.c_message_count += 1
             self.send_control(tgt, transmit, "vlink", "distro") 
 
     def _vlink(self, src_node: VLAwareQNode, src_cchannel: ClassicChannel, transmit: Transmit):
