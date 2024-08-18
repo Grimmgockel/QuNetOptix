@@ -9,14 +9,15 @@ class VLEntangledPair(MixedStateEntanglement):
     '''
     Custom entanglement for maintenance app
     '''
-    def __init__(self, fidelity: float = 1, b: float | None = None, c: float | None = None, d: float | None = None, name: str | None = None):
+    def __init__(self, fidelity: float = 0.99, b: float | None = None, c: float | None = None, d: float | None = None, name: str | None = None):
         super().__init__(fidelity, b, c, d, name)
         self.src = None
         self.dst = None
         self.account: EprAccount = None
 
-    #def store_error_model(self, t: float, decoherence_rate: Optional[float] = 0, **kwargs):
+    def store_error_model(self, t: float, decoherence_rate: Optional[float] = 0, **kwargs):
         #self.w = self.w 
+        pass
 
     #def transfer_error_model(self, length: float, decoherence_rate: Optional[float] = 0, **kwargs):
         #self.w = self.w 
@@ -27,7 +28,7 @@ class StandardEntangledPair(MixedStateEntanglement):
     '''
     Custom entanglement for distro app
     '''
-    def __init__(self, fidelity: float = 1, b: float | None = None, c: float | None = None, d: float | None = None, name: str | None = None):
+    def __init__(self, fidelity: float = 0.99, b: float | None = None, c: float | None = None, d: float | None = None, name: str | None = None):
         super().__init__(fidelity, b, c, d, name)
         self.src = None
         self.dst = None

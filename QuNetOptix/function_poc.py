@@ -37,7 +37,7 @@ if __name__ == '__main__':
     vlink_fidelity_loss_avg = []
 
     # no vlinks
-    for i in range(17, 21):
+    for i in range(4, 50):
         ts=0
         te=10
         acc=1_000_000_000
@@ -70,12 +70,12 @@ if __name__ == '__main__':
         fidelity_loss_avg.append(metadata.fidelity_loss_avg)
 
     # vlinks
-    for i in range(17, 21):
+    for i in range(4, 50):
         ts=0
         te=10
         acc=1_000_000_000
         send_rate = 10
-        vlink_send_rate_hz = send_rate
+        vlink_send_rate_hz = 3*send_rate
         nodes_number = i
 
         oracle = NetworkOracle()
