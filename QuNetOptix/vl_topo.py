@@ -1,9 +1,17 @@
 from qns.entity.node.app import Application
+import itertools
+import numpy as np
+
+from qns.utils.rnd import get_randint
+from qns.utils.rnd import get_rand
+from qns.entity.node.node import QNode
 from qns.entity.qchannel.qchannel import QuantumChannel
 from qns.entity.cchannel.cchannel import ClassicChannel
 from qns.network.topology import Topology
 from qns.network.protocol.node_process_delay import NodeProcessDelayApp
 from qns.network.topology.linetopo import LineTopology
+from qns.network.topology.randomtopo import RandomTopology
+from qns.network.topology.waxmantopo import WaxmanTopology
 from vlaware_qnode import VLAwareQNode
 from vl_app import VLEnabledDistributionApp, VLMaintenanceApp, RecvQubitOverVL, RecvClassicPacket, RecvQubitPacket
 #from vl_maintenance import VLMaintenanceApp
@@ -13,6 +21,7 @@ from qns.entity.memory import QuantumMemory
 
 from typing import Dict, List, Tuple
 import numpy as np
+import networkx as nx
 
 
 # TODO SEEK OUT PARAMETRES FOR REALISTIC SETTING
@@ -138,3 +147,88 @@ class CustomDoubleStarTopology(Topology):
         self._add_apps(nl)
         self._add_memories(nl)
         return nl, ll
+
+class CustomWaxmanTopology(Topology):
+    def __init__(self, alpha=0.15, beta=0.7, nodes_number=12):
+        super().__init__(
+            nodes_number=nodes_number,
+            memory_args=memory_args,
+            qchannel_args=qchannel_args,
+            cchannel_args=cchannel_args,
+            nodes_apps=apps_list
+        )
+        self.alpha = alpha
+        self.beta = beta
+
+    def build(self) -> Tuple[List[VLAwareQNode], List[QuantumChannel]]:
+        # generate waxman topology using nx
+        waxman_graph = None
+        while True:
+            waxman_graph = nx.waxman_graph(self.nodes_number, alpha=self.alpha, beta=self.beta)
+            if nx.is_connected(waxman_graph):
+                break
+
+        # create nodes
+        nl: List[VLAwareQNode] = [VLAwareQNode(f'n{i}') for i in range(self.nodes_number)]
+
+        # create channels based on waxman edges
+        ll = []
+        for i, (u, v) in enumerate(waxman_graph.edges()):
+            link = QuantumChannel(name=f'l{i}', **self.qchannel_args)
+            ll.append(link)
+            nl[u].add_qchannel(link)
+            nl[v].add_qchannel(link)
+
+        self._add_apps(nl)
+        self._add_memories(nl)
+
+        return nl, ll
+
+class CustomRandomTopology(RandomTopology):
+    def __init__(self, nodes_number, lines_number: int, nodes_apps: List[Application] = ..., qchannel_args: Dict = ..., cchannel_args: Dict = ..., memory_args: List[Dict] | None = ...):
+        super().__init__(nodes_number, lines_number, nodes_apps, qchannel_args, cchannel_args, memory_args)
+
+    def build(self) -> Tuple[List[VLAwareQNode] | List[QuantumChannel]]:
+        nl: List[VLAwareQNode] = []
+        ll: List[QuantumChannel] = []
+
+        mat = [[0 for i in range(self.nodes_number)] for j in range(self.nodes_number)]
+
+        if self.nodes_number >= 1:
+            n = VLAwareQNode(f"n{1}")
+            nl.append(n)
+
+        for i in range(self.nodes_number - 1):
+            n = VLAwareQNode(f"n{i+2}")
+            nl.append(n)
+
+            idx = get_randint(0, i)
+            pn = nl[idx]
+            mat[idx][i + 1] = 1
+            mat[i + 1][idx] = 1
+
+            link = QuantumChannel(name=f"l{idx+1},{i+2}", **self.qchannel_args)
+            ll.append(link)
+            pn.add_qchannel(link)
+            n.add_qchannel(link)
+
+        if self.lines_number > self.nodes_number - 1:
+            for i in range(self.nodes_number - 1, self.lines_number):
+                while True:
+                    a = get_randint(0, self.nodes_number - 1)
+                    b = get_randint(0, self.nodes_number - 1)
+                    if mat[a][b] == 0:
+                        break
+                mat[a][b] = 1
+                mat[b][a] = 1
+                n = nl[a]
+                pn = nl[b]
+                link = QuantumChannel(name=f"l{a+1},{b+1}", **self.qchannel_args)
+                ll.append(link)
+                pn.add_qchannel(link)
+                n.add_qchannel(link)
+
+        self._add_apps(nl)
+        self._add_memories(nl)
+        return nl, ll
+

@@ -36,7 +36,7 @@ class NetworkOracle():
 
         # Network
         metadata = SimData()
-        self._net: VLNetwork = VLNetwork(topo=config.topo, metadata=metadata, continuous_distro=config.continuous_distro, schedule_n_vlinks=config.schedule_n_vlinks, custom_vlinks=config.vlinks, vlink_send_rate=config.vlink_send_rate)
+        self._net: VLNetwork = VLNetwork(topo=config.topo, metadata=metadata, continuous_distro=config.continuous_distro, schedule_n_vlinks=config.schedule_n_vlinks, custom_vlinks=config.vlinks, vlink_send_rate=config.vlink_send_rate, vls=config.vls)
         self._net.build_route()
         if config.job.sessions is None:
             self._net.random_requests(number=config.job.session_count, attr={'send_rate': config.send_rate})

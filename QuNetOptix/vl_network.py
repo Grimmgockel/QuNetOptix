@@ -55,7 +55,7 @@ class VLNetwork(QuantumNetwork):
     '''
     Quantum network containing special request types called superlinks, that are considered for routing as entanglement links
     '''
-    def __init__(self, topo: Topology, metadata: SimData, continuous_distro: bool, schedule_n_vlinks: Optional[int], custom_vlinks: List[Tuple[str]], vlink_send_rate: float, k: int = 1):
+    def __init__(self, topo: Topology, metadata: SimData, continuous_distro: bool, schedule_n_vlinks: Optional[int], custom_vlinks: List[Tuple[str]], vlink_send_rate: float, vls: bool = True):
         # init metadata
         self.metadata: SimData = metadata
         self.metadata.distribution_requests = set()
@@ -65,7 +65,6 @@ class VLNetwork(QuantumNetwork):
         self.metadata.entanglement_log_timestamps = {} # for plotting
 
         # members
-        self.k = k
         self.name = 'vl network'
         self.vlink_send_rate = vlink_send_rate
         self.continuous_distro: bool = continuous_distro
@@ -85,7 +84,7 @@ class VLNetwork(QuantumNetwork):
                 self.add_vlink(src=self.get_node(vlink[0]), dest=self.get_node(vlink[1]), attr={'send_rate': self.vlink_send_rate})
 
         self.physical_graph = VLNetGraph(self.nodes, self.qchannels)
-        if not custom_vlinks:
+        if vls:
 
             # louvain algorithm
             partition = community_louvain.best_partition(self.physical_graph.graph, randomize=True)
@@ -99,7 +98,7 @@ class VLNetwork(QuantumNetwork):
 
             usable_nodes = centroid_nodes[:(len(centroid_nodes) // 2) * 2]
             vlink_pairs = list(itertools.zip_longest(*[iter(usable_nodes)] * 2))
-            vlink_pairs = vlink_pairs[:k]
+            #vlink_pairs = vlink_pairs[:k]
             print(f'identified vlinks: {vlink_pairs}')
             if vlink_pairs:
                 for vlink_pair in vlink_pairs:

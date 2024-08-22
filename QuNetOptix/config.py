@@ -30,6 +30,7 @@ class Config:
     topo: Topology
     job: Job 
     vlink_send_rate: float = 1
+    vls: bool = True
     send_rate: float = 1
     continuous_distro: bool = True
     vlinks: List[Tuple[str]] = None

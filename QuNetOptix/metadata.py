@@ -25,6 +25,9 @@ class SimData:
     vlink_requests: Set[Request] = None
     distro_results: Dict[str, DistroResult] = None
 
+    # max values
+    gl_max: float = 0.0
+
 
     # sim performance data
     df = pd.DataFrame()
@@ -68,6 +71,14 @@ class SimData:
             return self.df['generation_latency_agg'][0] / self.df['success_count'][0]
         except ZeroDivisionError:
             return None
+
+    @property
+    def generation_latency_max(self) -> float:
+        return self.gl_max
+
+    @property
+    def generation_latency_agg(self) -> float:
+        return self.df['generation_latency_agg'][0]
 
     @property
     def fidelity_avg(self) -> Optional[float]:
