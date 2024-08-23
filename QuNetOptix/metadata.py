@@ -27,6 +27,7 @@ class SimData:
 
     # max values
     gl_max: float = 0.0
+    gl_min: float = 0.0
 
 
     # sim performance data

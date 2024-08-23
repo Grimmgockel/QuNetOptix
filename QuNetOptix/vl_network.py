@@ -94,17 +94,43 @@ class VLNetwork(QuantumNetwork):
             sorted_communities = dict(sorted(communities.items(), key=lambda x: len(x[1]), reverse=True))
 
             # centroids
-            centroid_nodes = [self.find_centroid(self.physical_graph.graph, nodes).name for nodes in sorted_communities.values()]
+            centroid_nodes = [self.find_centroid(self.physical_graph.graph, nodes) for nodes in sorted_communities.values()]
 
-            usable_nodes = centroid_nodes[:(len(centroid_nodes) // 2) * 2]
-            vlink_pairs = list(itertools.zip_longest(*[iter(usable_nodes)] * 2))
-            #vlink_pairs = vlink_pairs[:k]
-            print(f'identified vlinks: {vlink_pairs}')
-            if vlink_pairs:
-                for vlink_pair in vlink_pairs:
-                    src_node = self.get_node(vlink_pair[0])
-                    tgt_node = self.get_node(vlink_pair[1])
+            # compute shortes path lengths between all pairs of centroids
+            distances = dict(nx.all_pairs_shortest_path_length(self.physical_graph.graph))
+            pairs_with_distances = []
+
+
+            for i, src_node in enumerate(centroid_nodes):
+                for j, tgt_node in enumerate(centroid_nodes):
+                    if i is not j:
+                        path_length = distances[src_node][tgt_node]
+                        pairs_with_distances.append((src_node, tgt_node, path_length))
+
+
+            # sort pairs by path length in descending order
+            pairs_with_distances.sort(key=lambda x: x[2], reverse=True)
+
+            # select to maximize path length
+            selected_vlinks = []
+            used_nodes = set()
+            for pair in pairs_with_distances:
+                src_node, tgt_node, path_length = pair
+                if path_length >= 3:
+                    if src_node not in used_nodes and tgt_node not in used_nodes:
+                        selected_vlinks.append((src_node, tgt_node))
+                        used_nodes.add(src_node)
+                        used_nodes.add(tgt_node)
+
+
+            if selected_vlinks:
+                for vlink_pair in selected_vlinks:
+                    src_node = self.get_node(vlink_pair[0].name)
+                    tgt_node = self.get_node(vlink_pair[1].name)
                     self.add_vlink(src=src_node, dest=tgt_node, attr={'send_rate': self.vlink_send_rate})
+
+            '''
+            print(f'identified vlinks {selected_vlinks}')
 
             # Draw the graph with nodes colored by their community
             pos = nx.spring_layout(self.physical_graph.graph)  # For better visualization
@@ -120,6 +146,7 @@ class VLNetwork(QuantumNetwork):
             nx.draw_networkx_labels(self.physical_graph.graph, pos, font_size=10, font_family='sans-serif')
 
             plt.show()
+            '''
 
         # set routing algorithm
         self.vlink_graph = VLNetGraph(self.nodes, self.qchannels, vlinks=self.vlinks, lvl=1)

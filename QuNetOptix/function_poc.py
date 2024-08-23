@@ -28,6 +28,7 @@ if __name__ == '__main__':
 
     throughput = []
     genlat_max = []
+    genlat_min = []
     genlat_agg = []
     genlat_avg = []
     fidelity_avg = []
@@ -38,6 +39,7 @@ if __name__ == '__main__':
 
     vlink_throughput = []
     vlink_genlat_max = []
+    vlink_genlat_min = []
     vlink_genlat_agg = []
     vlink_genlat_avg = []
     vlink_fidelity_avg = []
@@ -47,7 +49,7 @@ if __name__ == '__main__':
     vlink_c_message_counts = []
 
     # no vlinks
-    for i in range(5, 8):
+    for i in range(5, 101):
         ts=0
         te=50
         acc=1_000_000_000
@@ -74,12 +76,10 @@ if __name__ == '__main__':
         metadata: SimData = oracle.run(config, loglvl=log.logging.INFO)
         print(f'n={i}; eps={metadata.throughput}; lat={metadata.generation_latency_avg}; fid={metadata.fidelity_avg}; fid_loss={metadata.fidelity_loss_avg}; succ={metadata.success_rate_p}; distros={metadata.success_count}/{metadata.send_count}; mem={metadata.remaining_mem_usage}; swaps={metadata.avg_swap_count}')
 
-        print(metadata.gl_max)
-
-
         number_nodes.append(i)
         throughput.append(metadata.throughput)
         genlat_max.append(metadata.gl_max)
+        genlat_min.append(metadata.gl_min)
         genlat_agg.append(metadata.generation_latency_agg)
         genlat_avg.append(metadata.generation_latency_avg)
         fidelity_avg.append(metadata.fidelity_avg)
@@ -89,7 +89,7 @@ if __name__ == '__main__':
         q_message_counts.append(metadata.q_message_count)
 
     # vlinks
-    for i in range(5, 8):
+    for i in range(5, 101):
         ts=0
         te=50
         acc=1_000_000_000
@@ -119,6 +119,7 @@ if __name__ == '__main__':
 
         vlink_throughput.append(metadata.throughput)
         vlink_genlat_max.append(metadata.gl_max)
+        vlink_genlat_min.append(metadata.gl_min)
         vlink_genlat_agg.append(metadata.generation_latency_agg)
         vlink_genlat_avg.append(metadata.generation_latency_avg)
         vlink_fidelity_avg.append(metadata.fidelity_avg)
@@ -137,9 +138,11 @@ if __name__ == '__main__':
         'throughput': throughput,
         'vlink_throughput': vlink_throughput,
         'generation_latency_max': genlat_max,
+        'generation_latency_min': genlat_min,
         'generation_latency_agg': genlat_agg,
         'generation_latency_avg': genlat_avg,
         'vlink_generation_latency_max': vlink_genlat_max,
+        'vlink_generation_latency_min': vlink_genlat_min,
         'vlink_generation_latency_agg': vlink_genlat_agg,
         'vlink_generation_latency_avg': vlink_genlat_avg,
 

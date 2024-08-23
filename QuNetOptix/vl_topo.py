@@ -28,7 +28,7 @@ import networkx as nx
 # --------- PARAMETRES --------- 
 light_speed = 299791458 
 length = 200_000 # in m
-memory_capacity = 400
+memory_capacity = 5000
 
 coherence_time = 1 # 1ms to 1s for crystal based stuff
 decoherence_rate = 1 / coherence_time

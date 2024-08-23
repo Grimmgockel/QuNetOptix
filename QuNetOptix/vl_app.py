@@ -401,8 +401,15 @@ class VLApp(Application):
             self.gen_latencies.append(gen_latency)
             self.generation_latency_agg += gen_latency
 
+            # max latency
             if self.net.metadata.gl_max < gen_latency:
                 self.net.metadata.gl_max = gen_latency
+
+            # min latency
+            if self.net.metadata.gl_min == 0.0:
+                self.net.metadata.gl_min = gen_latency
+            elif self.net.metadata.gl_min > gen_latency:
+                self.net.metadata.gl_min = gen_latency
 
             fidelity = result_epr.fidelity
             self.fidelity_agg += fidelity
