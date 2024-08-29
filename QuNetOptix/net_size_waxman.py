@@ -13,13 +13,13 @@ from qns.network.protocol import EntanglementDistributionApp
 from typing import List
 import matplotlib.pyplot as plt
 import os
+import random
 
 from qns.utils.multiprocess import MPSimulations
 
-# TODO use same vlinks for all rounds
-# TODO calculate waiting time for distro
-# TODO why are the avg swaps for 500 nodes almost 1 ???
+# TODO random requests need to have big distance
 # TODO vlinks need to be readily available at the start
+    # maintenance app established ONE vlink per request and upkeeps the fidelity
 # TODO parallel sims
 
 if __name__ == '__main__': 
@@ -58,9 +58,8 @@ if __name__ == '__main__':
     start_time = time.time()
 
     # no vlinks, growing network size, waxman
-    for i in range(200,201,20):
-        topo=CustomWaxmanTopology(nodes_number=i)
-        #topo=CustomWaxmanTopology(nodes_number=i, alpha=0.1, beta=0.2, size=100_000)
+    for i in range(20,21,10):
+        topo=CustomWaxmanTopology(nodes_number=i, seed=i) # same seed for same nodes number
         max_sessions = i/2
         print(f'node_count={i}')
         for k in range(2, 9, 6): # use 20% and 80% utilization
@@ -94,13 +93,12 @@ if __name__ == '__main__':
             vlink_c_message_counts_agg = 0
             vlink_q_message_counts_agg = 0
 
-            rounds = 5
+            rounds = 2
             for j in range(rounds):
                 print(f'\t\tround ({j+1}/{rounds})\ttime={(time.time()-start_time):2f}')
                 jobs = Job.random(session_count=session_count) # sessions have to be the same to be comparable
 
                 # NO VLINKS
-                '''
                 oracle = NetworkOracle()
                 config = Config(
                     ts=ts,
@@ -125,8 +123,6 @@ if __name__ == '__main__':
                 swaps_agg += metadata.avg_swap_count
                 c_message_counts_agg += metadata.c_message_count
                 q_message_counts_agg += metadata.q_message_count
-                '''
-
 
                 # VLINKS
                 oracle = NetworkOracle()
@@ -215,7 +211,7 @@ if __name__ == '__main__':
         'vlink_c_message_count': vlink_c_message_counts,
         'vlink_q_message_count': vlink_q_message_counts,
     })
-    df.to_csv('data_scale/test.csv', index=False)
+    df.to_csv('data_scale/test4.csv', index=False)
 
 
 

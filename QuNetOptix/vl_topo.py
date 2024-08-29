@@ -152,7 +152,7 @@ class CustomDoubleStarTopology(Topology):
 
 
 class CustomWaxmanTopology(Topology):
-    def __init__(self, nodes_number):
+    def __init__(self, nodes_number, seed):
         super().__init__(
             nodes_number=nodes_number,
             memory_args=memory_args,
@@ -160,11 +160,12 @@ class CustomWaxmanTopology(Topology):
             cchannel_args=cchannel_args,
             nodes_apps=apps_list
         )
+        self.seed = seed
 
     def build(self) -> Tuple[List[VLAwareQNode], List[QuantumChannel]]:
         # create waxman_graph
         #waxman_graph = nx.waxman_graph(self.nodes_number, alpha=0.15, beta=0.3)
-        waxman_graph = nx.barabasi_albert_graph(self.nodes_number, 1)
+        waxman_graph = nx.barabasi_albert_graph(self.nodes_number, 1, seed=self.seed)
 
         # create nodes
         nl: List[VLAwareQNode] = [VLAwareQNode(f'n{i}') for i in range(self.nodes_number)]
