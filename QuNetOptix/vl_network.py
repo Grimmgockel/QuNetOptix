@@ -64,6 +64,7 @@ class VLNetwork(QuantumNetwork):
         self.metadata.entanglement_log = [] # for plotting
         self.metadata.entanglement_log_timestamps = {} # for plotting
 
+
         # members
         self.name = 'vl network'
         self.vlink_send_rate = vlink_send_rate
@@ -85,6 +86,15 @@ class VLNetwork(QuantumNetwork):
 
         self.physical_graph = VLNetGraph(self.nodes, self.qchannels)
         if vls:
+
+            pos = nx.spring_layout(self.physical_graph.graph)
+            #pos = nx.kamada_kawai_layout(self.physical_graph.graph)
+            #pos = nx.shell_layout(self.physical_graph.graph)
+            #pos = nx.planar_layout(self.physical_graph.graph)
+            #pos = nx.spectral_layout(self.physical_graph.graph)
+            nx.draw(self.physical_graph.graph, pos, with_labels=True)
+            plt.show()
+
 
             # louvain algorithm
             partition = community_louvain.best_partition(self.physical_graph.graph, randomize=True)
@@ -129,9 +139,9 @@ class VLNetwork(QuantumNetwork):
                     tgt_node = self.get_node(vlink_pair[1].name)
                     self.add_vlink(src=src_node, dest=tgt_node, attr={'send_rate': self.vlink_send_rate})
 
-            '''
             print(f'identified vlinks {selected_vlinks}')
 
+            '''
             # Draw the graph with nodes colored by their community
             pos = nx.spring_layout(self.physical_graph.graph)  # For better visualization
 

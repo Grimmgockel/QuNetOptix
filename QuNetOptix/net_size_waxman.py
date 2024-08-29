@@ -58,12 +58,12 @@ if __name__ == '__main__':
     start_time = time.time()
 
     # no vlinks, growing network size, waxman
-    print('----------------\nNO VLINKS | GROWING NET SIZE | WAXMAN\n----------------')
-    for i in range(20,501,20):
-        topo=CustomWaxmanTopology(alpha=0.9, beta=0.1, nodes_number=i)
+    for i in range(200,201,20):
+        topo=CustomWaxmanTopology(nodes_number=i)
+        #topo=CustomWaxmanTopology(nodes_number=i, alpha=0.1, beta=0.2, size=100_000)
         max_sessions = i/2
         print(f'node_count={i}')
-        for k in range(2, 9, 6):
+        for k in range(2, 9, 6): # use 20% and 80% utilization
             # get sessions
             utilization = k/10
             session_count = int(utilization * max_sessions)
@@ -100,6 +100,7 @@ if __name__ == '__main__':
                 jobs = Job.random(session_count=session_count) # sessions have to be the same to be comparable
 
                 # NO VLINKS
+                '''
                 oracle = NetworkOracle()
                 config = Config(
                     ts=ts,
@@ -124,6 +125,7 @@ if __name__ == '__main__':
                 swaps_agg += metadata.avg_swap_count
                 c_message_counts_agg += metadata.c_message_count
                 q_message_counts_agg += metadata.q_message_count
+                '''
 
 
                 # VLINKS
@@ -213,7 +215,7 @@ if __name__ == '__main__':
         'vlink_c_message_count': vlink_c_message_counts,
         'vlink_q_message_count': vlink_q_message_counts,
     })
-    df.to_csv('data_scale/net_size_waxman.csv', index=False)
+    df.to_csv('data_scale/test.csv', index=False)
 
 
 

@@ -5,7 +5,7 @@ from scipy.interpolate import make_interp_spline
 
 df = pd.read_csv('data_scale/net_size_waxman.csv')
 
-df = df.groupby('n').mean().reset_index()
+df = df.iloc[1::2]
 nodes_number = df['n'].tolist()
 throughput = df['throughput'].tolist()
 vlink_throughput = df['vlink_throughput'].tolist()

@@ -148,8 +148,11 @@ class CustomDoubleStarTopology(Topology):
         self._add_memories(nl)
         return nl, ll
 
+    
+
+
 class CustomWaxmanTopology(Topology):
-    def __init__(self, alpha=0.15, beta=0.7, nodes_number=12):
+    def __init__(self, nodes_number):
         super().__init__(
             nodes_number=nodes_number,
             memory_args=memory_args,
@@ -157,16 +160,11 @@ class CustomWaxmanTopology(Topology):
             cchannel_args=cchannel_args,
             nodes_apps=apps_list
         )
-        self.alpha = alpha
-        self.beta = beta
 
     def build(self) -> Tuple[List[VLAwareQNode], List[QuantumChannel]]:
-        # generate waxman topology using nx
-        waxman_graph = None
-        while True:
-            waxman_graph = nx.waxman_graph(self.nodes_number, alpha=self.alpha, beta=self.beta)
-            if nx.is_connected(waxman_graph):
-                break
+        # create waxman_graph
+        #waxman_graph = nx.waxman_graph(self.nodes_number, alpha=0.15, beta=0.3)
+        waxman_graph = nx.barabasi_albert_graph(self.nodes_number, 1)
 
         # create nodes
         nl: List[VLAwareQNode] = [VLAwareQNode(f'n{i}') for i in range(self.nodes_number)]
@@ -183,6 +181,8 @@ class CustomWaxmanTopology(Topology):
         self._add_memories(nl)
 
         return nl, ll
+
+
 
 class CustomRandomTopology(RandomTopology):
     def __init__(self, nodes_number, lines_number: int, nodes_apps: List[Application] = ..., qchannel_args: Dict = ..., cchannel_args: Dict = ..., memory_args: List[Dict] | None = ...):
