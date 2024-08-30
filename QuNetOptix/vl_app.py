@@ -76,7 +76,6 @@ class VLApp(Application):
         self.add_handler(self.RecvClassicPacketHandler, [RecvClassicPacket])
 
         # meta data
-        self.test: int = 0
         self.c_message_count: int = 0
         self.q_message_count: int = 0
         self.swap_count: int = 0
@@ -168,6 +167,7 @@ class VLApp(Application):
             dst=session_dst,
             charlie=epr.account, # only set forward for first node
             start_time_s=self._simulator.current_time.sec,
+            wait_time_s=0
         )
         self.own.trans_registry[epr.account.transmit_id] = transmit
         self.log_trans(f'start new ep distribution: {transmit.src} -> {transmit.dst} [epr={epr.name}]', transmit=transmit)
@@ -196,6 +196,8 @@ class VLApp(Application):
             next_hop: VLAwareQNode = routing_result.next_hop_virtual
             self.own.waiting_for_vlink_buf.append(transmit)
             if len(self.own.vlink_buf) == 0 and len(next_hop.vlink_buf) == 0:
+                transmit.wait_time_s = self._simulator.current_time.sec
+                self.own.trans_registry[transmit.id] = transmit
                 self.log_trans(f'waiting for vlink on {self.own.name} to {next_hop.name}\t[{epr}]', transmit=transmit)
                 self.waiting_for_vlink = True
                 return
@@ -397,7 +399,13 @@ class VLApp(Application):
             # KPIs
             self.net.metadata.distro_results[transmit.id].src_result = (transmit, result_epr)
             self.success_count += 1
-            gen_latency: float = self._simulator.current_time.sec - transmit.start_time_s
+
+            wait_time = 0.0
+            if transmit.wait_time_s != 0:
+                wait_time = self._simulator.current_time.sec - transmit.wait_time_s
+
+            #gen_latency: float = self._simulator.current_time.sec - transmit.start_time_s 
+            gen_latency: float = self._simulator.current_time.sec - transmit.start_time_s - wait_time
             self.gen_latencies.append(gen_latency)
             self.generation_latency_agg += gen_latency
 
@@ -450,6 +458,7 @@ class VLApp(Application):
         transmit_to_teleport: Transmit = self.own.waiting_for_vlink_buf.popleft()
         vlink_transmit: Transmit = self.own.vlink_buf.pop()
 
+        #print(transmit_to_teleport.wait_time_s)
         #vlink_buf_list = list(self.own.vlink_buf.queue)
         #vlink_transmit: Transmit = vlink_buf_list[-1]
 

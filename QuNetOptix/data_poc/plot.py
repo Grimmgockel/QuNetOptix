@@ -34,10 +34,10 @@ plt.style.use('fivethirtyeight')
 plt.style.use('grayscale')
 marker = None
 markersize = None
-linewidth = 5
+linewidth = 3.5
 
 # THROUGHPUT
-plt.figure(figsize=(12,6))
+'''
 plt.plot(number_nodes, throughput, label='no vlinks', marker=marker, markersize=markersize, color='red', linewidth=linewidth)    
 plt.plot(number_nodes, vlink_throughput, label='vlinks', marker=marker,  markersize=markersize, color='blue', linewidth=linewidth)    
 plt.xlabel('# of nodes', fontweight='bold')
@@ -47,8 +47,8 @@ plt.ylim(bottom=0)
 plt.tight_layout()
 plt.savefig('data_poc/throughput.svg', format='svg')
 
+
 # MAX LATENCY
-plt.figure(figsize=(12,6))
 plt.plot(number_nodes, generation_latency_max, label='no vlinks', marker=marker, markersize=markersize, color='red', linewidth=linewidth)    
 plt.plot(number_nodes, vlink_generation_latency_max, label='vlinks', marker=marker,  markersize=markersize, color='blue', linewidth=linewidth)    
 plt.xlabel('# of nodes', fontweight='bold')
@@ -59,7 +59,6 @@ plt.tight_layout()
 plt.savefig('data_poc/max_latency.svg', format='svg')
 
 # MIN LATENCY
-plt.figure(figsize=(12,6))
 plt.plot(number_nodes, generation_latency_min, label='no vlinks', marker=marker, markersize=markersize, color='red', linewidth=linewidth)    
 plt.plot(number_nodes, vlink_generation_latency_min, label='vlinks', marker=marker,  markersize=markersize, color='blue', linewidth=linewidth)    
 plt.xlabel('# of nodes', fontweight='bold')
@@ -70,7 +69,6 @@ plt.tight_layout()
 plt.savefig('data_poc/min_latency.svg', format='svg')
 
 # AVG LATENCY
-plt.figure(figsize=(12,6))
 plt.plot(number_nodes, generation_latency_avg, label='no vlinks', marker=marker, markersize=markersize, color='red', linewidth=linewidth)    
 plt.plot(number_nodes, vlink_generation_latency_avg, label='vlinks', marker=marker,  markersize=markersize, color='blue', linewidth=linewidth)    
 plt.xlabel('# of nodes', fontweight='bold')
@@ -80,8 +78,8 @@ plt.ylim(bottom=0)
 plt.tight_layout()
 plt.savefig('data_poc/avg_latency.svg', format='svg')
 
+
 # AGG LATENCY
-plt.figure(figsize=(12,6))
 plt.plot(number_nodes, generation_latency_agg, label='no vlinks', marker=marker, markersize=markersize, color='red', linewidth=linewidth)    
 plt.plot(number_nodes, vlink_generation_latency_agg, label='vlinks', marker=marker,  markersize=markersize, color='blue', linewidth=linewidth)    
 plt.xlabel('# of nodes', fontweight='bold')
@@ -91,8 +89,8 @@ plt.ylim(bottom=0)
 plt.tight_layout()
 plt.savefig('data_poc/agg_latency.svg', format='svg')
 
+'''
 # FIDELITY
-plt.figure(figsize=(12,6))
 plt.plot(number_nodes, fidelity, label='no vlinks', marker=marker, markersize=markersize, color='red', linewidth=linewidth)    
 plt.plot(number_nodes, vlink_fidelity, label='vlinks', marker=marker,  markersize=markersize, color='blue', linewidth=linewidth)    
 plt.xlabel('# of nodes', fontweight='bold')

@@ -58,6 +58,7 @@ class Transmit:
     alice: Optional[EprAccount] = None # points backward 
     charlie: Optional[EprAccount] = None # points forwards
     start_time_s: Optional[float] = None
+    wait_time_s: Optional[float] = None # sim time where transmit started waiting for vlink
     revoked: bool = False
 
     def __eq__(self, other):

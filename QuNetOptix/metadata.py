@@ -55,7 +55,7 @@ class SimData:
 
     @property
     def avg_swap_count(self) -> int:
-        return self.agg_swap_count / self.success_count
+        return self.agg_swap_count / self.send_count
 
     @property
     def remaining_mem_usage(self) -> int:

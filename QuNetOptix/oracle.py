@@ -1,4 +1,5 @@
 from qns.network.network import QuantumNetwork
+import random
 from qns.simulator.simulator import Simulator
 from qns.network.topology.topo import ClassicTopology
 from qns.entity.monitor import Monitor
@@ -17,6 +18,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from typing import Optional
+import networkx as nx
 
 class NetworkOracle():
     def __init__(self) -> None:
@@ -24,6 +26,21 @@ class NetworkOracle():
         self._net: Optional[VLNetwork] = None
         self._monitor: Optional[Monitor] = None
         self.data = pd.DataFrame()
+
+    def get_random_requests(self, graph: nx.Graph, n: int, seed: int = None):
+        if seed is not None:
+            random.seed(seed)
+        path_lengths = dict(nx.all_pairs_shortest_path_length(graph))
+        pairs_with_distances = [
+            (source, target, dist)
+            for source, targets in path_lengths.items()
+            for target, dist in targets.items()
+            if source != target
+        ]
+        weighted_pairs = [(source, target) for source, target, dist in pairs_with_distances if dist > 0]
+        weights = [dist**2 for _, _, dist in pairs_with_distances if dist > 0]
+        selected_pairs = random.choices(weighted_pairs, weights=weights, k=n)
+        return selected_pairs
 
     def run(self, config: Config, loglvl: int = log.logging.INFO) -> SimData:
 
@@ -36,10 +53,18 @@ class NetworkOracle():
 
         # Network
         metadata = SimData()
-        self._net: VLNetwork = VLNetwork(topo=config.topo, metadata=metadata, continuous_distro=config.continuous_distro, schedule_n_vlinks=config.schedule_n_vlinks, custom_vlinks=config.vlinks, vlink_send_rate=config.vlink_send_rate, vls=config.vls)
+        self._net: VLNetwork = VLNetwork(topo=config.topo, metadata=metadata, continuous_distro=config.continuous_distro, schedule_n_vlinks=config.schedule_n_vlinks, custom_vlinks=config.vlinks, vlink_send_rate=config.vlink_send_rate, vls=config.vls, session_count=config.job.session_count)
         self._net.build_route()
         if config.job.sessions is None:
-            self._net.random_requests(number=config.job.session_count, attr={'send_rate': config.send_rate})
+            #self._net.random_requests(number=config.job.session_count, attr={'send_rate': config.send_rate})
+            sessions = self.get_random_requests(self._net.physical_graph.graph, config.job.session_count, config.session_seed)
+            for session in sessions:
+                self._net.add_request(
+                    src=self._net.get_node(f'n{session[0].index}'),
+                    dest=self._net.get_node(f'n{session[1].index}'),
+                    attr={'send_rate': config.send_rate}
+                )
+
         else: # custom sessions
             for session in config.job.sessions:
                 self._net.add_request(
@@ -47,6 +72,7 @@ class NetworkOracle():
                     dest=self._net.get_node(session[1]),
                     attr={'send_rate': config.send_rate}
                 )
+
         self._net.install(self._sim)
 
         # Monitor

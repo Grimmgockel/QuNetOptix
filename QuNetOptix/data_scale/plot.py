@@ -1,72 +1,51 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.interpolate import make_interp_spline
+from scipy.optimize import curve_fit
+from scipy.stats import norm
 
-df = pd.read_csv('data_scale/net_size_waxman.csv')
+# TODO election pllot
 
-df = df.iloc[1::2]
+df = pd.read_csv('data_scale/5x_vlink_sendrate.csv')
+
+df = df.iloc[0::2]
 nodes_number = df['n'].tolist()
 throughput = df['throughput'].tolist()
 vlink_throughput = df['vlink_throughput'].tolist()
 
-gen_latency_avg = df['generation_latency_avg'].tolist()
-vlink_gen_latency_avg = df['vlink_generation_latency_avg'].tolist()
-
-gen_latency_max = df['generation_latency_max'].tolist()
-vlink_gen_latency_max = df['vlink_generation_latency_max'].tolist()
-
-gen_latency_min = df['generation_latency_min'].tolist()
-vlink_gen_latency_min = df['vlink_generation_latency_min'].tolist()
-
-gen_latency_agg = df['generation_latency_agg'].tolist()
-vlink_gen_latency_agg = df['vlink_generation_latency_agg'].tolist()
-
-
 plt.style.use('fivethirtyeight')
 plt.style.use('grayscale')
-marker = None
-linewidth = 2
 
-plt.figure(figsize=(18,10))
-plt.plot(nodes_number, throughput, label='no vlinks', color='r', marker=marker, linestyle='-')
-plt.plot(nodes_number, vlink_throughput, label='vlinks', color='b', marker=marker, linestyle='-')
-plt.xlabel('throughput (ep/s)')
-plt.ylabel('# of nodes')
-plt.legend()
-plt.show()
+def save_plot(x, y, y_vlink):
+    marker = None
+    linewidth = 3.5
+    alpha = 0.5
+    line_alpha = 1
+    plt.scatter(x, y, label='no vlinks', color='r', marker='o', alpha=alpha)
+    plt.scatter(x, y_vlink, label='vlinks', color='b', marker='s', alpha=alpha)
 
-plt.figure(figsize=(18,10))
-plt.plot(nodes_number, gen_latency_avg, label='no vlinks', color='r', marker=marker, linestyle='-')
-plt.plot(nodes_number, vlink_gen_latency_avg, label='vlinks', color='b', marker=marker, linestyle='-')
-plt.xlabel('latency (s)')
-plt.ylabel('# of nodes')
-plt.legend()
-plt.show()
+    def falling_exp(x, a, b, c):
+        return a * np.exp(-b * x) + c
 
-plt.figure(figsize=(18,10))
-plt.plot(nodes_number, gen_latency_max, label='no vlinks', color='r', marker=marker, linestyle='-')
-plt.plot(nodes_number, vlink_gen_latency_max, label='vlinks', color='b', marker=marker, linestyle='-')
-plt.xlabel('latency (s)')
-plt.ylabel('# of nodes')
-plt.legend()
-plt.show()
+    params, cov = curve_fit(falling_exp, x, y, p0=[100, 0.01, 0])
+    vlink_params, vlink_cov = curve_fit(falling_exp, x, y_vlink, p0=[100, 0.01, 0])
 
-plt.figure(figsize=(18,10))
-plt.plot(nodes_number, gen_latency_min, label='no vlinks', color='r', marker=marker, linestyle='-')
-plt.plot(nodes_number, vlink_gen_latency_min, label='vlinks', color='b', marker=marker, linestyle='-')
-plt.xlabel('latency (s)')
-plt.ylabel('# of nodes')
-plt.legend()
-plt.show()
+    x_fit = np.linspace(min(x), max(x), 100)
+    y_fit = falling_exp(x_fit, *params)
+    vlink_y_fit = falling_exp(x_fit, *vlink_params)
 
-plt.figure(figsize=(18,10))
-plt.plot(nodes_number, gen_latency_agg, label='no vlinks', color='r', marker=marker, linestyle='-')
-plt.plot(nodes_number, vlink_gen_latency_agg, label='vlinks', color='b', marker=marker, linestyle='-')
-plt.xlabel('latency (s)')
-plt.ylabel('# of nodes')
-plt.legend()
-plt.show()
+    plt.plot(x_fit, y_fit, color='r', linestyle='dashed', alpha=line_alpha, linewidth=linewidth)
+    plt.plot(x_fit, vlink_y_fit, color='b', linestyle='dashed', alpha=line_alpha, linewidth=linewidth)
+
+
+    plt.ylabel('Throughput (ep/s)', fontweight='bold')
+    plt.xlabel('# of nodes', fontweight='bold')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig('data_scale/5x_vlink_rate.svg', format='svg')
+
+save_plot(nodes_number, throughput, vlink_throughput)
 
 
 

@@ -12,30 +12,11 @@ from typing import List
 import matplotlib.pyplot as plt
 import os
 
-# TODO implement vlinks only occupying half of memory !!! vlinks are scheduling beyond cap/4
-# TODO think about error/loss/decoherence models, entanglement models and hardware details -> make qubits decohere and restart the distro
-
-# TODO make multicore work
-# TODO overhaul plotting animation
-# TODO implement vlink selection
-# TODO implement custom waxman topology
-
-# TODO implement overlooking vlinks OR NOT FIRST GET SOME RESULTS
-
-from qns.utils.multiprocess import MPSimulations
 if __name__ == '__main__': 
     number_nodes = []
 
-    throughput = []
-    genlat_max = []
-    genlat_min = []
-    genlat_agg = []
-    genlat_avg = []
-    fidelity_avg = []
-    fidelity_loss_avg = []
-    swaps = []
-    q_message_counts = []
-    c_message_counts = []
+    number_requests = []
+    vlink_send_rates = []
 
     vlink_throughput = []
     vlink_genlat_max = []
@@ -48,85 +29,53 @@ if __name__ == '__main__':
     vlink_q_message_counts = []
     vlink_c_message_counts = []
 
-    # no vlinks
-    for i in range(5, 101):
-        ts=0
-        te=50
-        acc=1_000_000_000
-        send_rate = 10
-        vlink_send_rate_hz = 1.5*send_rate
-        nodes_number = i
-
-        oracle = NetworkOracle()
-        config = Config(
-            ts=ts,
-            te=te,
-            acc=acc,
-            vlink_send_rate=vlink_send_rate_hz,
-            send_rate=send_rate,
-            topo=CustomLineTopology(nodes_number=nodes_number),
-            vls=False,
-            #job = Job.custom(sessions=[('n1', f'n{nodes_number}'), ('n1', f'n{nodes_number}')]),
-            job = Job.custom(sessions=[('n1', f'n{nodes_number}')]),
-            continuous_distro=True,
-            #vlinks=[('n2', f'n{nodes_number-1}')],
-            #schedule_n_vlinks=5,
-        )
-
-        metadata: SimData = oracle.run(config, loglvl=log.logging.INFO)
-        print(f'n={i}; eps={metadata.throughput}; lat={metadata.generation_latency_avg}; fid={metadata.fidelity_avg}; fid_loss={metadata.fidelity_loss_avg}; succ={metadata.success_rate_p}; distros={metadata.success_count}/{metadata.send_count}; mem={metadata.remaining_mem_usage}; swaps={metadata.avg_swap_count}')
-
-        number_nodes.append(i)
-        throughput.append(metadata.throughput)
-        genlat_max.append(metadata.gl_max)
-        genlat_min.append(metadata.gl_min)
-        genlat_agg.append(metadata.generation_latency_agg)
-        genlat_avg.append(metadata.generation_latency_avg)
-        fidelity_avg.append(metadata.fidelity_avg)
-        fidelity_loss_avg.append(metadata.fidelity_loss_avg)
-        swaps.append(metadata.avg_swap_count)
-        c_message_counts.append(metadata.c_message_count)
-        q_message_counts.append(metadata.q_message_count)
-
     # vlinks
-    for i in range(5, 101):
-        ts=0
-        te=50
-        acc=1_000_000_000
-        send_rate = 10
-        vlink_send_rate_hz = 3*send_rate
-        nodes_number = i
+    for vlink_factor in range(1, 11):
+        for num_sessions in range(1, 11):
+            ts=0
+            te=20
+            acc=1_000_000_000
+            send_rate = 10
+            vlink_send_rate_hz = vlink_factor*send_rate
+            nodes_number = 10
 
-        oracle = NetworkOracle()
-        config = Config(
-            ts=ts,
-            te=te,
-            acc=acc,
-            vlink_send_rate=vlink_send_rate_hz,
-            send_rate=send_rate,
-            topo=CustomLineTopology(nodes_number=nodes_number),
-            vls=False,
-            #job = Job.custom(sessions=[('n1', f'n{nodes_number}'), ('n1', f'n{nodes_number}')]),
-            job = Job.custom(sessions=[('n1', f'n{nodes_number}')]),
-            continuous_distro=True,
-            vlinks=[('n2', f'n{nodes_number-1}')],
-            #schedule_n_vlinks=5,
-        )
+            sessions=[]
+            for i in range(num_sessions):
+                sessions.append(('n1', f'n{nodes_number}'))
 
-        metadata: SimData = oracle.run(config, loglvl=log.logging.INFO)
-        print(f'n={i}; eps={metadata.throughput}; lat={metadata.generation_latency_avg}; fid={metadata.fidelity_avg}; fid_loss={metadata.fidelity_loss_avg}; succ={metadata.success_rate_p}; distros={metadata.success_count}/{metadata.send_count}; mem={metadata.remaining_mem_usage}; swaps={metadata.avg_swap_count}')
+            oracle = NetworkOracle()
+            config = Config(
+                ts=ts,
+                te=te,
+                acc=acc,
+                vlink_send_rate=vlink_send_rate_hz,
+                send_rate=send_rate,
+                topo=CustomLineTopology(nodes_number=nodes_number),
+                vls=False,
+                #job = Job.custom(sessions=[('n1', f'n{nodes_number}'), ('n1', f'n{nodes_number}')]),
+                job = Job.custom(sessions=sessions),
+                continuous_distro=True,
+                vlinks=[('n2', f'n{nodes_number-1}')],
+                #schedule_n_vlinks=5,
+            )
+
+            metadata: SimData = oracle.run(config, loglvl=log.logging.INFO)
+            print(f'n={nodes_number}; requests={num_sessions}; vlink_rate={vlink_send_rate_hz}; eps={metadata.throughput}; succ={metadata.success_rate_p}%; distros={metadata.success_count}/{metadata.send_count}')
 
 
-        vlink_throughput.append(metadata.throughput)
-        vlink_genlat_max.append(metadata.gl_max)
-        vlink_genlat_min.append(metadata.gl_min)
-        vlink_genlat_agg.append(metadata.generation_latency_agg)
-        vlink_genlat_avg.append(metadata.generation_latency_avg)
-        vlink_fidelity_avg.append(metadata.fidelity_avg)
-        vlink_fidelity_loss_avg.append(metadata.fidelity_loss_avg)
-        vlink_swaps.append(metadata.avg_swap_count)
-        vlink_c_message_counts.append(metadata.c_message_count)
-        vlink_q_message_counts.append(metadata.q_message_count)
+            number_nodes.append(nodes_number)
+            number_requests.append(num_sessions)
+            vlink_send_rates.append(vlink_send_rate_hz)
+            vlink_throughput.append(metadata.throughput)
+            vlink_genlat_max.append(metadata.gl_max)
+            vlink_genlat_min.append(metadata.gl_min)
+            vlink_genlat_agg.append(metadata.generation_latency_agg)
+            vlink_genlat_avg.append(metadata.generation_latency_avg)
+            vlink_fidelity_avg.append(metadata.fidelity_avg)
+            vlink_fidelity_loss_avg.append(metadata.fidelity_loss_avg)
+            vlink_swaps.append(metadata.avg_swap_count)
+            vlink_c_message_counts.append(metadata.c_message_count)
+            vlink_q_message_counts.append(metadata.q_message_count)
 
 
     import pandas as pd
@@ -134,33 +83,27 @@ if __name__ == '__main__':
         # nodes
         'n': number_nodes,
 
+        # send rate and sessions
+        'n_sessions': number_requests,
+        'vlink_send_rates': vlink_send_rates,
+
         # performance
-        'throughput': throughput,
         'vlink_throughput': vlink_throughput,
-        'generation_latency_max': genlat_max,
-        'generation_latency_min': genlat_min,
-        'generation_latency_agg': genlat_agg,
-        'generation_latency_avg': genlat_avg,
         'vlink_generation_latency_max': vlink_genlat_max,
         'vlink_generation_latency_min': vlink_genlat_min,
         'vlink_generation_latency_agg': vlink_genlat_agg,
         'vlink_generation_latency_avg': vlink_genlat_avg,
 
         # fidelity
-        'fidelity_avg': fidelity_avg,
-        'fidelity_loss_avg': fidelity_loss_avg,
         'vlink_fidelity_avg': vlink_fidelity_avg,
         'vlink_fidelity_loss_avg': vlink_fidelity_loss_avg,
 
         # traffic
-        'swaps': swaps,
-        'c_message_count': c_message_counts,
-        'q_message_count': q_message_counts,
         'vlink_swaps': vlink_swaps,
         'vlink_c_message_count': vlink_c_message_counts,
         'vlink_q_message_count': vlink_q_message_counts,
     })
-    df.to_csv('data_poc/poc.csv', index=False)
+    df.to_csv('data_poc/poc_vlink_send_rate.csv', index=False)
 
     
 

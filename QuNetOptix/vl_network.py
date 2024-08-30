@@ -55,7 +55,7 @@ class VLNetwork(QuantumNetwork):
     '''
     Quantum network containing special request types called superlinks, that are considered for routing as entanglement links
     '''
-    def __init__(self, topo: Topology, metadata: SimData, continuous_distro: bool, schedule_n_vlinks: Optional[int], custom_vlinks: List[Tuple[str]], vlink_send_rate: float, vls: bool = True):
+    def __init__(self, topo: Topology, metadata: SimData, continuous_distro: bool, schedule_n_vlinks: Optional[int], custom_vlinks: List[Tuple[str]], vlink_send_rate: float, vls: bool = True, session_count: int = 0):
         # init metadata
         self.metadata: SimData = metadata
         self.metadata.distribution_requests = set()
@@ -131,6 +131,7 @@ class VLNetwork(QuantumNetwork):
                         used_nodes.add(tgt_node)
 
 
+            self.vlink_send_rate = 10 * (session_count / len(selected_vlinks) * 1.2)
             if selected_vlinks:
                 for vlink_pair in selected_vlinks:
                     src_node = self.get_node(vlink_pair[0].name)

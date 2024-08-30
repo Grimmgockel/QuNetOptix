@@ -17,17 +17,16 @@ import random
 
 from qns.utils.multiprocess import MPSimulations
 
-# TODO random requests need to have big distance
-# TODO vlinks need to be readily available at the start
-    # maintenance app established ONE vlink per request and upkeeps the fidelity
-# TODO parallel sims
+# TODO redo PoC
+# TODO plot with logarithmic regression (see us election poll plot)
+# TODO add 3d plot to PoC for x(nr simultaneous sessions), y(vlink_sendrate), z(throughput), to make statement about congestion
 
 if __name__ == '__main__': 
     ts=0
     te=20
     acc=1_000_000_000
     send_rate = 10
-    vlink_send_rate_hz = 3*send_rate
+    vlink_send_rate_hz = 5*send_rate
 
     number_nodes = []
     sessions = []
@@ -48,6 +47,9 @@ if __name__ == '__main__':
     fidelity_loss_avg = []
     vlink_fidelity_loss_avg = []
 
+    vlink_numbers = []
+    session_numbers = []
+
     swaps = []
     vlink_swaps = []
     c_message_counts = []
@@ -58,7 +60,7 @@ if __name__ == '__main__':
     start_time = time.time()
 
     # no vlinks, growing network size, waxman
-    for i in range(20,21,10):
+    for i in range(50,501,50):
         topo=CustomWaxmanTopology(nodes_number=i, seed=i) # same seed for same nodes number
         max_sessions = i/2
         print(f'node_count={i}')
@@ -93,25 +95,33 @@ if __name__ == '__main__':
             vlink_c_message_counts_agg = 0
             vlink_q_message_counts_agg = 0
 
-            rounds = 2
+            rounds = 5
             for j in range(rounds):
-                print(f'\t\tround ({j+1}/{rounds})\ttime={(time.time()-start_time):2f}')
+                session_seed = i + j
+                sim_time = 20+(i/10)
+                print(f'\t\tround ({j+1}/{rounds})\ttime={(time.time()-start_time):2f}\tseed={session_seed}\t\tduration={sim_time}s')
                 jobs = Job.random(session_count=session_count) # sessions have to be the same to be comparable
 
                 # NO VLINKS
-                oracle = NetworkOracle()
-                config = Config(
-                    ts=ts,
-                    te=te,
-                    acc=acc,
-                    vlink_send_rate=vlink_send_rate_hz,
-                    send_rate=send_rate,
-                    topo=topo,
-                    vls=False,
-                    continuous_distro=True,
-                    job = jobs,
-                )
-                metadata: SimData = oracle.run(config, loglvl=log.logging.INFO)
+                while True:
+                    try:
+                        oracle = NetworkOracle()
+                        config = Config(
+                            ts=ts,
+                            te=sim_time,
+                            acc=acc,
+                            vlink_send_rate=vlink_send_rate_hz,
+                            send_rate=send_rate,
+                            topo=topo,
+                            vls=False,
+                            continuous_distro=True,
+                            job = jobs,
+                            session_seed=session_seed,
+                        )
+                        metadata: SimData = oracle.run(config, loglvl=log.logging.INFO)
+                        break
+                    except KeyError:
+                        print('\t\tfailed... try again')
 
                 throughput_agg += metadata.throughput
                 genlat_max_agg += metadata.gl_max
@@ -124,28 +134,33 @@ if __name__ == '__main__':
                 c_message_counts_agg += metadata.c_message_count
                 q_message_counts_agg += metadata.q_message_count
 
+
                 # VLINKS
-                oracle = NetworkOracle()
-                config = Config(
-                    ts=ts,
-                    te=te,
-                    acc=acc,
-                    vlink_send_rate=vlink_send_rate_hz,
-                    send_rate=send_rate,
-                    topo=topo,
-                    vls=True,
-                    continuous_distro=True,
-                    job = jobs,
-                )
-                metadata: SimData = oracle.run(config, loglvl=log.logging.INFO)
+                while True:
+                    try:
+                        oracle = NetworkOracle()
+                        config = Config(
+                            ts=ts,
+                            te=te,
+                            acc=acc,
+                            vlink_send_rate=vlink_send_rate_hz,
+                            send_rate=send_rate,
+                            topo=topo,
+                            vls=True,
+                            continuous_distro=True,
+                            job = jobs,
+                            session_seed=session_seed
+                        )
+                        metadata: SimData = oracle.run(config, loglvl=log.logging.INFO)
+                        break
+                    except KeyError:
+                        print('\t\tfailed... try again')
 
                 vlink_throughput_agg += metadata.throughput
                 vlink_genlat_max_agg += metadata.gl_max
                 vlink_genlat_min_agg += metadata.gl_min
                 vlink_genlat_agg_agg += metadata.generation_latency_agg
                 vlink_genlat_avg_agg += metadata.generation_latency_avg
-                vlink_fidelity_avg_agg += metadata.fidelity_avg
-                vlink_fidelity_loss_avg_agg += metadata.fidelity_loss_avg
                 vlink_swaps_agg += metadata.avg_swap_count
                 vlink_c_message_counts_agg += metadata.c_message_count
                 vlink_q_message_counts_agg += metadata.q_message_count
@@ -153,6 +168,9 @@ if __name__ == '__main__':
 
 
             number_nodes.append(i)
+            vlink_numbers.append(len(oracle._net.vlinks))
+            session_numbers.append(len(oracle._net.requests))
+
             sessions.append(session_count)
             throughput.append(throughput_agg/rounds)
             genlat_max.append(genlat_max_agg/rounds)
@@ -204,6 +222,8 @@ if __name__ == '__main__':
         'vlink_fidelity_loss_avg': vlink_fidelity_loss_avg,
 
         # traffic
+        'vlink_number': vlink_numbers,
+        'session_number': session_numbers,
         'swaps': swaps,
         'c_message_count': c_message_counts,
         'q_message_count': q_message_counts,
@@ -211,7 +231,7 @@ if __name__ == '__main__':
         'vlink_c_message_count': vlink_c_message_counts,
         'vlink_q_message_count': vlink_q_message_counts,
     })
-    df.to_csv('data_scale/test4.csv', index=False)
+    df.to_csv('data_scale/scale_data.csv', index=False)
 
 
 
