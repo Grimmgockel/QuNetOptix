@@ -13,10 +13,11 @@ nodes_number = df['n'].tolist()
 throughput = df['throughput'].tolist()
 vlink_throughput = df['vlink_throughput'].tolist()
 
+
 plt.style.use('fivethirtyeight')
 plt.style.use('grayscale')
 
-def save_plot(x, y, y_vlink):
+def save_plot(x, y, y_vlink, filename):
     marker = None
     linewidth = 3.5
     alpha = 0.5
@@ -43,10 +44,15 @@ def save_plot(x, y, y_vlink):
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig('data_scale/5x_vlink_rate.svg', format='svg')
+    plt.savefig(filename, format='svg')
 
-save_plot(nodes_number, throughput, vlink_throughput)
+#save_plot(nodes_number, throughput, vlink_throughput, 'data_scale/5x_vlink_sendrate.svg')
 
 
+df2 = pd.read_csv('data_scale/scaling_vlink_rate.csv')
+n = df2['n'].tolist()
+through = df2['throughput'].tolist()
+vlink_through = df2['vlink_throughput'].tolist()
+save_plot(n, through, vlink_through, 'data_scale/scaling_vlink_rate.svg')
 
 
