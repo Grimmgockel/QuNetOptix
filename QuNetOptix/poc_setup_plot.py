@@ -47,4 +47,4 @@ ax.text(label_pos[0], label_pos[1], 'vlink', fontsize=16, ha='center', color='bl
 
 # Set title and show plot
 plt.axis('off')
-plt.savefig('plots/poc_net_plot.svg', format='svg')
+plt.savefig('final_plots/poc/net_setup.svg', format='svg')
